@@ -4,6 +4,9 @@ import 'package:go_router/go_router.dart';
 import '../../flavor/gym_flavor_service.dart';
 import '../../services/auth_service.dart';
 import '../../widgets/gym_logo.dart';
+import '../../widgets/glass_panel.dart';
+import '../../widgets/pill_button.dart';
+import '../../widgets/stitch_text_field.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -13,23 +16,35 @@ class RegisterScreen extends StatefulWidget {
 }
 
 class _RegisterScreenState extends State<RegisterScreen> {
-  final _nameCtrl = TextEditingController();
+  final _userCtrl = TextEditingController();
   final _emailCtrl = TextEditingController();
   final _passCtrl = TextEditingController();
+  final _confirmCtrl = TextEditingController();
   bool _loading = false;
   String? _error;
 
   @override
   void dispose() {
-    _nameCtrl.dispose();
+    _userCtrl.dispose();
     _emailCtrl.dispose();
     _passCtrl.dispose();
+    _confirmCtrl.dispose();
     super.dispose();
   }
 
   Future<void> _register() async {
     final flavor = GymFlavorService.instance.flavor;
     if (flavor == null) return;
+
+    if (_passCtrl.text != _confirmCtrl.text) {
+      setState(() => _error = 'Passwords do not match');
+      return;
+    }
+    if (_passCtrl.text.length < 8) {
+      setState(() => _error = 'Password must be at least 8 characters');
+      return;
+    }
+
     setState(() {
       _loading = true;
       _error = null;
@@ -37,14 +52,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final auth = AuthService.forFlavor(flavor);
     final result = await auth.register(
       flavor: flavor,
-      fullName: _nameCtrl.text,
+      username: _userCtrl.text,
       email: _emailCtrl.text,
       password: _passCtrl.text,
     );
     if (!mounted) return;
     setState(() => _loading = false);
     if (result.ok) {
-      context.go('/home');
+      context.go('/member-onboard');
       return;
     }
     setState(() => _error = result.message);
@@ -54,57 +69,85 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Widget build(BuildContext context) {
     final flavor = GymFlavorService.instance.flavor!;
     return Scaffold(
-      appBar: AppBar(title: const Text('Register')),
       body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.all(24),
-          children: [
-            Center(child: GymLogo(flavor: flavor, size: 56)),
-            const SizedBox(height: 16),
-            Text(
-              'Join ${flavor.gymName}',
-              style: Theme.of(context).textTheme.headlineMedium,
+        child: Center(
+          child: SingleChildScrollView(
+            padding: EdgeInsets.fromLTRB(
+              20,
+              16,
+              20,
+              16 + MediaQuery.viewInsetsOf(context).bottom,
             ),
-            const SizedBox(height: 24),
-            TextField(
-              controller: _nameCtrl,
-              decoration: const InputDecoration(labelText: 'Full name'),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _emailCtrl,
-              keyboardType: TextInputType.emailAddress,
-              decoration: const InputDecoration(labelText: 'Email'),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _passCtrl,
-              obscureText: true,
-              decoration: const InputDecoration(
-                labelText: 'Password',
-                helperText: 'At least 8 characters',
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 420),
+              child: Column(
+                children: [
+                  GymLogo(flavor: flavor, size: 56),
+                  const SizedBox(height: 12),
+                  Text('Create account', style: Theme.of(context).textTheme.headlineMedium),
+                  Text(
+                    'Join ${flavor.gymName}',
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                  const SizedBox(height: 24),
+                  GlassPanel(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Text(
+                          'Initialize your member profile',
+                          style: Theme.of(context).textTheme.bodyMedium,
+                        ),
+                        const SizedBox(height: 20),
+                        StitchTextField(
+                          controller: _userCtrl,
+                          label: 'Username',
+                          icon: Icons.alternate_email,
+                        ),
+                        const SizedBox(height: 12),
+                        StitchTextField(
+                          controller: _emailCtrl,
+                          label: 'Email',
+                          icon: Icons.mail_outline,
+                          keyboardType: TextInputType.emailAddress,
+                        ),
+                        const SizedBox(height: 12),
+                        StitchTextField(
+                          controller: _passCtrl,
+                          label: 'Password',
+                          icon: Icons.lock_outline,
+                          obscureText: true,
+                        ),
+                        const SizedBox(height: 12),
+                        StitchTextField(
+                          controller: _confirmCtrl,
+                          label: 'Confirm password',
+                          icon: Icons.lock_outline,
+                          obscureText: true,
+                          onSubmitted: (_) => _register(),
+                        ),
+                        if (_error != null) ...[
+                          const SizedBox(height: 12),
+                          Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+                        ],
+                        const SizedBox(height: 20),
+                        PillButton(
+                          label: 'Create account',
+                          loading: _loading,
+                          onPressed: _register,
+                          icon: Icons.arrow_forward,
+                        ),
+                        TextButton(
+                          onPressed: () => context.pop(),
+                          child: const Text('Already have an account? Sign in'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
-            if (_error != null) ...[
-              const SizedBox(height: 12),
-              Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
-            ],
-            const SizedBox(height: 24),
-            ElevatedButton(
-              onPressed: _loading ? null : _register,
-              child: _loading
-                  ? const SizedBox(
-                      height: 22,
-                      width: 22,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Text('Create account'),
-            ),
-            TextButton(
-              onPressed: () => context.pop(),
-              child: const Text('Already have an account? Sign in'),
-            ),
-          ],
+          ),
         ),
       ),
     );

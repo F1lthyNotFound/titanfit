@@ -26,7 +26,9 @@ class TitanFitApp extends StatelessWidget {
         return MaterialApp.router(
           title: flavor?.gymName ?? 'TitanFit',
           debugShowCheckedModeBanner: false,
-          theme: AppTheme.build(flavor),
+          themeMode: ThemeMode.system,
+          theme: AppTheme.buildLight(flavor),
+          darkTheme: AppTheme.build(flavor),
           routerConfig: _appRouter,
         );
       },

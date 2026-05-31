@@ -17,7 +17,7 @@ class AccountScreen extends StatelessWidget {
   }
 
   Future<void> _resetGym(BuildContext context) async {
-    await GymFlavorService.instance.clearFlavor();
+    await GymFlavorService.instance.clearSession();
     if (context.mounted) context.go('/onboard');
   }
 

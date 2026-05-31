@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../flavor/gym_flavor_service.dart';
+import '../../widgets/glass_panel.dart';
+import '../../widgets/pill_button.dart';
+import '../../widgets/stitch_text_field.dart';
 
 class GymSelectScreen extends StatefulWidget {
   const GymSelectScreen({super.key});
@@ -10,33 +13,36 @@ class GymSelectScreen extends StatefulWidget {
   State<GymSelectScreen> createState() => _GymSelectScreenState();
 }
 
-class _GymSelectScreenState extends State<GymSelectScreen> {
+class _GymSelectScreenState extends State<GymSelectScreen>
+    with SingleTickerProviderStateMixin {
   final _controller = TextEditingController();
   String? _error;
+  late final AnimationController _entry;
 
   @override
   void initState() {
     super.initState();
+    _entry = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    )..forward();
     _prefillFromCachedFlavor();
   }
 
   void _prefillFromCachedFlavor() {
     final slug = GymFlavorService.instance.flavor?.gymSlug;
-    if (slug != null && slug.isNotEmpty) {
-      _controller.text = slug;
-    }
+    if (slug != null && slug.isNotEmpty) _controller.text = slug;
   }
 
   @override
   void dispose() {
     _controller.dispose();
+    _entry.dispose();
     super.dispose();
   }
 
   Future<void> _submit() async {
-    setState(() {
-      _error = null;
-    });
+    setState(() => _error = null);
     final slug = _controller.text.trim().toLowerCase();
     if (slug.isEmpty) {
       setState(() => _error = 'Enter your gym code');
@@ -45,7 +51,7 @@ class _GymSelectScreenState extends State<GymSelectScreen> {
     final flavor = await GymFlavorService.instance.resolveFlavor(slug);
     if (!mounted) return;
     if (flavor == null) {
-      setState(() => _error = 'Gym not found — check code from your gym');
+      setState(() => _error = 'Gym not found — check code from your gym page');
       return;
     }
     context.go('/login');
@@ -56,60 +62,67 @@ class _GymSelectScreenState extends State<GymSelectScreen> {
     final loading = GymFlavorService.instance.isLoading;
     return Scaffold(
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const Spacer(flex: 1),
-              Text(
-                'TitanFit',
-                style: Theme.of(context).textTheme.headlineLarge,
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Enter the gym code from your landing page download link.',
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
-              const SizedBox(height: 32),
-              TextField(
-                controller: _controller,
-                textInputAction: TextInputAction.done,
-                autocorrect: false,
-                decoration: const InputDecoration(
-                  labelText: 'Gym code',
-                  hintText: 'e.g. ironworks-gym',
-                ),
-                onSubmitted: (_) => _submit(),
-              ),
-              if (_error != null) ...[
-                const SizedBox(height: 12),
-                Text(
-                  _error!,
-                  style: TextStyle(
-                    color: Theme.of(context).colorScheme.error,
-                    fontSize: 14,
+        child: FadeTransition(
+          opacity: CurvedAnimation(parent: _entry, curve: Curves.easeOut),
+          child: SlideTransition(
+            position: Tween<Offset>(begin: const Offset(0, 0.08), end: Offset.zero)
+                .animate(CurvedAnimation(parent: _entry, curve: Curves.easeOut)),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Column(
+                children: [
+                  const Spacer(),
+                  Icon(Icons.all_inclusive, size: 48, color: Theme.of(context).colorScheme.onSurface),
+                  const SizedBox(height: 12),
+                  Text('TitanFit', style: Theme.of(context).textTheme.headlineLarge),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Connect to your gym',
+                    style: Theme.of(context).textTheme.bodyMedium,
                   ),
-                ),
-              ],
-              const SizedBox(height: 24),
-              ElevatedButton(
-                onPressed: loading ? null : _submit,
-                child: loading
-                    ? const SizedBox(
-                        height: 22,
-                        width: 22,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Text('Connect to gym'),
+                  const SizedBox(height: 32),
+                  GlassPanel(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Text(
+                          'Gym code',
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'From your gym download link or landing page.',
+                          style: Theme.of(context).textTheme.bodyMedium,
+                        ),
+                        const SizedBox(height: 20),
+                        StitchTextField(
+                          controller: _controller,
+                          hint: 'e.g. ironworks-gym',
+                          icon: Icons.tag,
+                          textInputAction: TextInputAction.done,
+                          onSubmitted: (_) => _submit(),
+                        ),
+                        if (_error != null) ...[
+                          const SizedBox(height: 12),
+                          Text(
+                            _error!,
+                            style: TextStyle(color: Theme.of(context).colorScheme.error),
+                          ),
+                        ],
+                        const SizedBox(height: 20),
+                        PillButton(
+                          label: 'Connect',
+                          loading: loading,
+                          onPressed: loading ? null : _submit,
+                          icon: Icons.arrow_forward,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Spacer(flex: 2),
+                ],
               ),
-              const Spacer(flex: 2),
-              Text(
-                'Install from your gym\'s page to auto-apply branding.',
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
-            ],
+            ),
           ),
         ),
       ),

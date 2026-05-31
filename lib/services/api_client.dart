@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 
 class ApiClient {
   ApiClient({required this.baseUrl, this.cookieHeader = ''});
@@ -59,6 +60,34 @@ class ApiClient {
       },
       body: fields,
     );
+    _captureCookies(res);
+    return _decode(res);
+  }
+
+  Future<Map<String, dynamic>> postMultipart(
+    String path,
+    Map<String, String> fields, {
+    Map<String, List<int>>? files,
+    String fileField = 'avatar',
+    String fileName = 'avatar.jpg',
+  }) async {
+    final req = http.MultipartRequest('POST', _uri(path));
+    if (cookieHeader.isNotEmpty) {
+      req.headers['Cookie'] = cookieHeader;
+    }
+    req.fields.addAll(fields);
+    if (files != null) {
+      for (final e in files.entries) {
+        req.files.add(http.MultipartFile.fromBytes(
+          e.key,
+          e.value,
+          filename: fileName,
+          contentType: MediaType('image', 'jpeg'),
+        ));
+      }
+    }
+    final streamed = await req.send();
+    final res = await http.Response.fromStream(streamed);
     _captureCookies(res);
     return _decode(res);
   }

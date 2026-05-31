@@ -7,6 +7,7 @@ import '../screens/auth/register_screen.dart';
 import '../screens/bookings/bookings_screen.dart';
 import '../screens/home/home_screen.dart';
 import '../screens/onboarding/gym_select_screen.dart';
+import '../screens/onboarding/member_onboarding_screen.dart';
 import '../screens/shell/main_shell.dart';
 import '../screens/wallet/wallet_screen.dart';
 
@@ -21,18 +22,23 @@ class AppRouter {
         final loc = state.matchedLocation;
         final hasFlavor = flavorService.hasFlavor;
         final loggedIn = flavorService.isLoggedIn;
+        final onboarded = flavorService.onboardingComplete;
 
         if (!hasFlavor && !loc.startsWith('/onboard')) {
           return '/onboard';
         }
         if (hasFlavor && loc == '/onboard') {
-          return loggedIn ? '/home' : '/login';
+          if (!loggedIn) return '/login';
+          return onboarded ? '/home' : '/member-onboard';
+        }
+        if (hasFlavor && loggedIn && !onboarded && _protected(loc) && loc != '/member-onboard') {
+          return '/member-onboard';
+        }
+        if (hasFlavor && loggedIn && onboarded && (loc == '/login' || loc == '/register' || loc == '/member-onboard')) {
+          return '/home';
         }
         if (hasFlavor && !loggedIn && _protected(loc)) {
           return '/login';
-        }
-        if (hasFlavor && loggedIn && (loc == '/login' || loc == '/register')) {
-          return '/home';
         }
         return null;
       },
@@ -48,6 +54,10 @@ class AppRouter {
         GoRoute(
           path: '/register',
           builder: (_, __) => const RegisterScreen(),
+        ),
+        GoRoute(
+          path: '/member-onboard',
+          builder: (_, __) => const MemberOnboardingScreen(),
         ),
         StatefulShellRoute.indexedStack(
           builder: (context, state, navigationShell) {

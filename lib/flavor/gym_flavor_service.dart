@@ -13,19 +13,23 @@ class GymFlavorService extends ChangeNotifier {
 
   static const _keyFlavor = 'titanfit_gym_flavor';
   static const _keyLoggedIn = 'titanfit_logged_in';
+  static const _keyOnboardingDone = 'titanfit_onboarding_complete';
 
   GymFlavor? _flavor;
   bool _loggedIn = false;
+  bool _onboardingComplete = false;
   bool _loading = false;
 
   GymFlavor? get flavor => _flavor;
   bool get hasFlavor => _flavor != null && _flavor!.isValid;
   bool get isLoggedIn => _loggedIn;
+  bool get onboardingComplete => _onboardingComplete;
   bool get isLoading => _loading;
 
   Future<void> init() async {
     final prefs = await SharedPreferences.getInstance();
     _loggedIn = prefs.getBool(_keyLoggedIn) ?? false;
+    _onboardingComplete = prefs.getBool(_keyOnboardingDone) ?? false;
     final raw = prefs.getString(_keyFlavor);
     if (raw != null && raw.isNotEmpty) {
       try {
@@ -67,19 +71,43 @@ class GymFlavorService extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> setLoggedIn(bool value) async {
-    _loggedIn = value;
+  Future<void> setSession({
+    required bool loggedIn,
+    bool? onboardingComplete,
+  }) async {
+    _loggedIn = loggedIn;
+    if (onboardingComplete != null) {
+      _onboardingComplete = onboardingComplete;
+    }
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_keyLoggedIn, value);
+    await prefs.setBool(_keyLoggedIn, loggedIn);
+    if (onboardingComplete != null) {
+      await prefs.setBool(_keyOnboardingDone, onboardingComplete);
+    }
+    notifyListeners();
+  }
+
+  Future<void> setLoggedIn(bool value) async {
+    await setSession(loggedIn: value);
+  }
+
+  Future<void> setOnboardingComplete(bool value) async {
+    _onboardingComplete = value;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyOnboardingDone, value);
     notifyListeners();
   }
 
   Future<void> clearFlavor() async {
     _flavor = null;
     _loggedIn = false;
+    _onboardingComplete = false;
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_keyFlavor);
     await prefs.remove(_keyLoggedIn);
+    await prefs.remove(_keyOnboardingDone);
     notifyListeners();
   }
+
+  Future<void> clearSession() async => clearFlavor();
 }

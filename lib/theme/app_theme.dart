@@ -2,120 +2,190 @@ import 'package:flutter/material.dart';
 
 import '../flavor/gym_flavor.dart';
 
-/// Titan Labs mobile theme — dark-first monochrome base + flavor accent hue.
-class AppTheme {
-  static const Color surfaceDark = Color(0xFF1A1A1A);
-  static const Color surfaceRaised = Color(0xFF242424);
-  static const Color textPrimary = Color(0xFFF4F4F4);
-  static const Color textMuted = Color(0xFF9A9A9A);
+/// Stitch Monochrome Health tokens + gym accent hue.
+class TitanTheme {
+  TitanTheme._();
 
-  static ThemeData build(GymFlavor? flavor) {
-    final hue = flavor?.primaryHue ?? 240;
-    final accent = HSLColor.fromAHSL(1, hue, 0.55, 0.62).toColor();
+  // Dark (Stitch void)
+  static const Color canvasDark = Color(0xFF000000);
+  static const Color surfaceDark = Color(0xFF141313);
+  static const Color surfaceContainerDark = Color(0xFF201F1F);
+  static const Color surfaceHighDark = Color(0xFF2A2A2A);
+  static const Color borderDark = Color(0xFF2C2C2E);
+  static const Color onSurfaceDark = Color(0xFFE5E2E1);
+  static const Color onSurfaceVariantDark = Color(0xFFC4C7C8);
+  static const Color outlineDark = Color(0xFF8E9192);
 
-    final colorScheme = ColorScheme.dark(
-      surface: surfaceDark,
-      onSurface: textPrimary,
-      primary: accent,
-      onPrimary: const Color(0xFF141414),
-      secondary: surfaceRaised,
-      onSecondary: textPrimary,
-      outline: const Color(0xFF3A3A3A),
-    );
+  // Light
+  static const Color canvasLight = Color(0xFFFFFFFF);
+  static const Color surfaceLight = Color(0xFFF5F5F5);
+  static const Color surfaceContainerLight = Color(0xFFEEEEEE);
+  static const Color borderLight = Color(0xFFE0E0E0);
+  static const Color onSurfaceLight = Color(0xFF1A1A1A);
+  static const Color onSurfaceVariantLight = Color(0xFF5C5C5C);
+
+  static const Color pillLight = Color(0xFFFFFFFF);
+  static const Color onPillLight = Color(0xFF2F3131);
+  static const Color pillDark = Color(0xFFFFFFFF);
+  static const Color onPillDark = Color(0xFF2F3131);
+
+  static Color accent(double hue, {bool monochrome = false}) {
+    if (monochrome || hue <= 0) return pillLight;
+    return HSLColor.fromAHSL(1, hue, 0.55, 0.62).toColor();
+  }
+
+  static Color glassFill(Brightness b) =>
+      b == Brightness.dark ? const Color(0x66281C1E) : const Color(0x66FFFFFF);
+
+  static ThemeData dark(GymFlavor? flavor) => _build(Brightness.dark, flavor);
+  static ThemeData light(GymFlavor? flavor) => _build(Brightness.light, flavor);
+
+  static ThemeData _build(Brightness brightness, GymFlavor? flavor) {
+    final hue = flavor?.effectiveHue ?? 240;
+    final mono = flavor?.mobileThemeSlug == 'monochrome' ||
+        (flavor?.mobileThemeSlug ?? 'monochrome') == 'monochrome' && hue <= 0;
+    final accentColor = accent(hue, monochrome: mono);
+
+    final isDark = brightness == Brightness.dark;
+    final canvas = isDark ? canvasDark : canvasLight;
+    final surface = isDark ? surfaceDark : surfaceLight;
+    final surfaceContainer = isDark ? surfaceContainerDark : surfaceContainerLight;
+    final onSurface = isDark ? onSurfaceDark : onSurfaceLight;
+    final onVariant = isDark ? onSurfaceVariantDark : onSurfaceVariantLight;
+    final border = isDark ? borderDark : borderLight;
+
+    final colorScheme = isDark
+        ? ColorScheme.dark(
+            surface: surface,
+            onSurface: onSurface,
+            primary: accentColor,
+            onPrimary: onPillDark,
+            secondary: surfaceContainer,
+            onSecondary: onSurface,
+            outline: outlineDark,
+            surfaceContainerHighest: surfaceHighDark,
+          )
+        : ColorScheme.light(
+            surface: surface,
+            onSurface: onSurface,
+            primary: accentColor,
+            onPrimary: onPillLight,
+            secondary: surfaceContainer,
+            onSecondary: onSurface,
+            outline: outlineDark,
+            surfaceContainerHighest: surfaceContainer,
+          );
 
     return ThemeData(
       useMaterial3: true,
-      brightness: Brightness.dark,
+      brightness: brightness,
       colorScheme: colorScheme,
-      scaffoldBackgroundColor: surfaceDark,
-      fontFamily: 'Inter',
-      textTheme: _textTheme(),
+      scaffoldBackgroundColor: canvas,
+      fontFamily: 'Roboto',
+      extensions: [TitanTokens(hue: hue, border: border, glassFill: glassFill(brightness))],
       appBarTheme: AppBarTheme(
-        backgroundColor: surfaceDark,
-        foregroundColor: textPrimary,
+        backgroundColor: canvas,
+        foregroundColor: onSurface,
         elevation: 0,
-        centerTitle: false,
-        titleTextStyle: const TextStyle(
-          fontSize: 18,
-          fontWeight: FontWeight.w700,
-          color: textPrimary,
-          letterSpacing: -0.3,
-        ),
-      ),
-      cardTheme: CardThemeData(
-        color: surfaceRaised,
-        elevation: 0,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-          side: const BorderSide(color: Color(0xFF333333)),
-        ),
+        scrolledUnderElevation: 0,
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: surfaceRaised,
+        fillColor: isDark ? surfaceContainer : surfaceContainer,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: Color(0xFF3A3A3A)),
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: border),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: Color(0xFF3A3A3A)),
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: border),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide(color: accent, width: 1.5),
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: accentColor, width: 1.5),
         ),
-        labelStyle: const TextStyle(color: textMuted),
-        hintStyle: const TextStyle(color: textMuted),
+        labelStyle: TextStyle(color: onVariant, fontSize: 13),
+        hintStyle: TextStyle(color: onVariant, fontSize: 14),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: accent,
-          foregroundColor: const Color(0xFF141414),
-          minimumSize: const Size.fromHeight(48),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-          textStyle: const TextStyle(
-            fontWeight: FontWeight.w600,
-            fontSize: 15,
-          ),
+          backgroundColor: pillLight,
+          foregroundColor: onPillDark,
+          minimumSize: const Size.fromHeight(52),
+          elevation: 0,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
+          textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+        ),
+      ),
+      textTheme: TextTheme(
+        headlineLarge: TextStyle(
+          fontSize: 28,
+          fontWeight: FontWeight.w700,
+          color: onSurface,
+          letterSpacing: -0.5,
+        ),
+        headlineMedium: TextStyle(
+          fontSize: 22,
+          fontWeight: FontWeight.w700,
+          color: onSurface,
+          letterSpacing: -0.3,
+        ),
+        titleMedium: TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.w600,
+          color: onSurface,
+        ),
+        bodyLarge: TextStyle(fontSize: 16, color: onSurface),
+        bodyMedium: TextStyle(fontSize: 14, color: onVariant),
+        labelLarge: TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+          color: onSurface,
         ),
       ),
       navigationBarTheme: NavigationBarThemeData(
-        backgroundColor: surfaceRaised,
-        indicatorColor: accent.withValues(alpha: 0.2),
-        labelTextStyle: WidgetStateProperty.all(
-          const TextStyle(fontSize: 11, fontWeight: FontWeight.w500),
-        ),
+        backgroundColor: isDark ? surfaceContainer : surfaceLight,
+        indicatorColor: accentColor.withValues(alpha: 0.15),
       ),
+    );
+  }
+}
+
+@immutable
+class TitanTokens extends ThemeExtension<TitanTokens> {
+  const TitanTokens({
+    required this.hue,
+    required this.border,
+    required this.glassFill,
+  });
+
+  final double hue;
+  final Color border;
+  final Color glassFill;
+
+  @override
+  TitanTokens copyWith({double? hue, Color? border, Color? glassFill}) {
+    return TitanTokens(
+      hue: hue ?? this.hue,
+      border: border ?? this.border,
+      glassFill: glassFill ?? this.glassFill,
     );
   }
 
-  static TextTheme _textTheme() {
-    return const TextTheme(
-      headlineLarge: TextStyle(
-        fontSize: 28,
-        fontWeight: FontWeight.w700,
-        color: textPrimary,
-        letterSpacing: -0.5,
-      ),
-      headlineMedium: TextStyle(
-        fontSize: 22,
-        fontWeight: FontWeight.w700,
-        color: textPrimary,
-        letterSpacing: -0.3,
-      ),
-      titleMedium: TextStyle(
-        fontSize: 16,
-        fontWeight: FontWeight.w600,
-        color: textPrimary,
-      ),
-      bodyLarge: const TextStyle(fontSize: 16, color: textPrimary),
-      bodyMedium: const TextStyle(fontSize: 14, color: textMuted),
-      labelLarge: const TextStyle(
-        fontSize: 14,
-        fontWeight: FontWeight.w600,
-        color: textPrimary,
-      ),
+  @override
+  TitanTokens lerp(ThemeExtension<TitanTokens>? other, double t) {
+    if (other is! TitanTokens) return this;
+    return TitanTokens(
+      hue: hue + (other.hue - hue) * t,
+      border: Color.lerp(border, other.border, t)!,
+      glassFill: Color.lerp(glassFill, other.glassFill, t)!,
     );
   }
+}
+
+/// Back-compat wrapper.
+class AppTheme {
+  static ThemeData build(GymFlavor? flavor) => TitanTheme.dark(flavor);
+  static ThemeData buildLight(GymFlavor? flavor) => TitanTheme.light(flavor);
 }
