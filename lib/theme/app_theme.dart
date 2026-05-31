@@ -35,15 +35,14 @@ class TitanTheme {
   }
 
   static Color glassFill(Brightness b) =>
-      b == Brightness.dark ? const Color(0x66281C1E) : const Color(0x66FFFFFF);
+      b == Brightness.dark ? const Color(0x66281C1E) : const Color(0x99FFFFFF);
 
   static ThemeData dark(GymFlavor? flavor) => _build(Brightness.dark, flavor);
   static ThemeData light(GymFlavor? flavor) => _build(Brightness.light, flavor);
 
   static ThemeData _build(Brightness brightness, GymFlavor? flavor) {
     final hue = flavor?.effectiveHue ?? 240;
-    final mono = flavor?.mobileThemeSlug == 'monochrome' ||
-        (flavor?.mobileThemeSlug ?? 'monochrome') == 'monochrome' && hue <= 0;
+    final mono = (flavor?.mobileThemeSlug ?? 'monochrome') == 'monochrome' && hue <= 0;
     final accentColor = accent(hue, monochrome: mono);
 
     final isDark = brightness == Brightness.dark;
@@ -81,7 +80,6 @@ class TitanTheme {
       brightness: brightness,
       colorScheme: colorScheme,
       scaffoldBackgroundColor: canvas,
-      fontFamily: 'Roboto',
       extensions: [TitanTokens(hue: hue, border: border, glassFill: glassFill(brightness))],
       appBarTheme: AppBarTheme(
         backgroundColor: canvas,
@@ -118,35 +116,47 @@ class TitanTheme {
           textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
         ),
       ),
-      textTheme: TextTheme(
-        headlineLarge: TextStyle(
-          fontSize: 28,
-          fontWeight: FontWeight.w700,
-          color: onSurface,
-          letterSpacing: -0.5,
-        ),
-        headlineMedium: TextStyle(
-          fontSize: 22,
-          fontWeight: FontWeight.w700,
-          color: onSurface,
-          letterSpacing: -0.3,
-        ),
-        titleMedium: TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.w600,
-          color: onSurface,
-        ),
-        bodyLarge: TextStyle(fontSize: 16, color: onSurface),
-        bodyMedium: TextStyle(fontSize: 14, color: onVariant),
-        labelLarge: TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.w600,
-          color: onSurface,
-        ),
-      ),
+      textTheme: _interTextTheme(onSurface, onVariant),
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: isDark ? surfaceContainer : surfaceLight,
         indicatorColor: accentColor.withValues(alpha: 0.15),
+      ),
+    );
+  }
+
+  static TextTheme _interTextTheme(Color onSurface, Color onVariant) {
+    final base = Typography.material2021().black;
+    return base.copyWith(
+      headlineLarge: base.headlineLarge?.copyWith(
+        fontSize: 32,
+        fontWeight: FontWeight.w700,
+        color: Colors.white,
+        letterSpacing: -0.5,
+      ),
+      headlineMedium: base.headlineMedium?.copyWith(
+        fontSize: 24,
+        fontWeight: FontWeight.w600,
+        color: onSurface,
+        letterSpacing: -0.3,
+      ),
+      titleMedium: base.titleMedium?.copyWith(
+        fontSize: 16,
+        fontWeight: FontWeight.w600,
+        color: onSurface,
+      ),
+      bodyLarge: base.bodyLarge?.copyWith(fontSize: 16, color: onSurface),
+      bodyMedium: base.bodyMedium?.copyWith(fontSize: 14, color: onVariant, height: 1.5),
+      labelLarge: base.labelLarge?.copyWith(
+        fontSize: 14,
+        fontWeight: FontWeight.w600,
+        color: onSurface,
+        letterSpacing: 0.08,
+      ),
+      labelSmall: base.labelSmall?.copyWith(
+        fontSize: 11,
+        fontWeight: FontWeight.w500,
+        color: onVariant,
+        letterSpacing: 0.12,
       ),
     );
   }

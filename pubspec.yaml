@@ -18,6 +18,8 @@ dependencies:
   image_picker: ^1.1.2
   image: ^4.5.4
   http_parser: ^4.1.2
+  qr_flutter: ^4.1.0
+  url_launcher: ^6.3.1
 
 dev_dependencies:
   flutter_test:
@@ -28,3 +30,4 @@ flutter:
   uses-material-design: true
   assets:
     - assets/
+    - assets/gym_slug.json

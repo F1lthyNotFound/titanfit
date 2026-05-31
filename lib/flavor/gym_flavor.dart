@@ -27,18 +27,8 @@ class GymFlavor {
     if (mobileThemeSlug == 'custom' && mobileCustomHue != null) {
       return mobileCustomHue!;
     }
-    const preset = {
-      'monochrome': 0.0,
-      'steel': 240.0,
-      'steel-gray': 240.0,
-      'ember': 35.0,
-      'amber-glow': 35.0,
-      'forest': 145.0,
-      'forest-green': 145.0,
-      'electric': 280.0,
-      'electric-blue': 280.0,
-    };
-    return preset[mobileThemeSlug] ?? primaryHue;
+    if (mobileThemeSlug == 'monochrome') return 0.0;
+    return primaryHue;
   }
 
   factory GymFlavor.fromJson(Map<String, dynamic> json, String slug) {
@@ -60,7 +50,7 @@ class GymFlavor {
       mobileCustomChroma: data['mobile_custom_chroma'] != null
           ? (data['mobile_custom_chroma'] as num).toDouble()
           : null,
-      apiBase: (data['api_base'] ?? '').toString(),
+      apiBase: _normalizeApiBase((data['api_base'] ?? '').toString()),
     );
   }
 
@@ -79,4 +69,31 @@ class GymFlavor {
       };
 
   bool get isValid => gymId > 0 && gymName.isNotEmpty;
+
+  /// Absolute logo URL (flavor cache may store a relative path).
+  String absoluteLogoUrl(String apiBase) {
+    if (logoUrl.isEmpty) return '';
+    if (logoUrl.startsWith('http://') || logoUrl.startsWith('https://')) {
+      return logoUrl.replaceFirst(RegExp(r'^http://'), 'https://');
+    }
+    final base = _normalizeApiBase(apiBase);
+    if (base.isEmpty) return logoUrl;
+    return '$base${logoUrl.startsWith('/') ? logoUrl : '/$logoUrl'}';
+  }
+
+  static String _normalizeApiBase(String url) {
+    final u = url.trim();
+    if (u.isEmpty) return u;
+    final uri = Uri.tryParse(u);
+    if (uri == null || uri.host.isEmpty) return u;
+    var scheme = uri.scheme;
+    if (scheme == 'http' || scheme.isEmpty) {
+      scheme = 'https';
+    }
+    final port = (scheme == 'https' && uri.port == 443) ||
+            (scheme == 'http' && uri.port == 80)
+        ? ''
+        : (uri.hasPort ? ':${uri.port}' : '');
+    return '$scheme://${uri.host}$port';
+  }
 }

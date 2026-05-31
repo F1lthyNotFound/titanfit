@@ -10,6 +10,7 @@ late final GoRouter _appRouter;
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await GymFlavorService.instance.init();
+  await GymFlavorService.instance.bootstrapFlavor();
   _appRouter = AppRouter.create();
   runApp(const TitanFitApp());
 }

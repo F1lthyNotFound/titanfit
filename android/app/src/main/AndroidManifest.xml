@@ -1,7 +1,10 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
     <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- 32-char placeholder; server patches per-gym name at APK download time -->
     <application
-        android:label="TitanFit"
+        android:label="TITANFIT_APP_PLACEHOLDER_NAME_00"
+        tools:ignore="HardcodedText"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
@@ -23,7 +26,7 @@
                 <action android:name="android.intent.action.VIEW"/>
                 <category android:name="android.intent.category.DEFAULT"/>
                 <category android:name="android.intent.category.BROWSABLE"/>
-                <data android:scheme="titanfit" android:host="gym"/>
+                <data android:scheme="titanfit" android:host="gym" android:pathPrefix="/"/>
             </intent-filter>
         </activity>
         <meta-data

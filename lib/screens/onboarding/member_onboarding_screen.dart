@@ -158,6 +158,8 @@ class _MemberOnboardingScreenState extends State<MemberOnboardingScreen> {
       gender: _step == 1 ? _gender : null,
       dateOfBirth: _step == 2 ? _dobIso() : null,
       phone: _step == 3 ? _phoneCtrl.text.trim() : null,
+      socialInstagram: _step == 3 ? _igCtrl.text.trim() : null,
+      socialFacebook: _step == 3 ? _fbCtrl.text.trim() : null,
       avatarBytes: _step == 0 ? _avatarBytes : null,
       complete: complete,
     );
@@ -258,7 +260,7 @@ class _MemberOnboardingScreenState extends State<MemberOnboardingScreen> {
   Widget _dobSelect(String label, String value, List<String> items, ValueChanged<String> onChanged) {
     return Expanded(
       child: DropdownButtonFormField<String>(
-        value: value.isEmpty ? null : value,
+        initialValue: value.isEmpty ? null : value,
         decoration: InputDecoration(labelText: label),
         items: items.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
         onChanged: (v) => onChanged(v ?? ''),

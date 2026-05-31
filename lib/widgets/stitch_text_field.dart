@@ -12,6 +12,7 @@ class StitchTextField extends StatefulWidget {
     this.textInputAction,
     this.onSubmitted,
     this.validator,
+    this.readOnly = false,
   });
 
   final TextEditingController controller;
@@ -19,6 +20,7 @@ class StitchTextField extends StatefulWidget {
   final String? hint;
   final IconData? icon;
   final bool obscureText;
+  final bool readOnly;
   final TextInputType? keyboardType;
   final TextInputAction? textInputAction;
   final ValueChanged<String>? onSubmitted;
@@ -42,14 +44,21 @@ class _StitchTextFieldState extends State<StitchTextField> {
     return TextFormField(
       controller: widget.controller,
       obscureText: _obscure,
+      readOnly: widget.readOnly,
       keyboardType: widget.keyboardType,
       textInputAction: widget.textInputAction,
       onFieldSubmitted: widget.onSubmitted,
       validator: widget.validator,
       style: Theme.of(context).textTheme.bodyLarge,
       decoration: InputDecoration(
-        labelText: widget.label,
+        labelText: widget.label?.toUpperCase(),
+        labelStyle: Theme.of(context).textTheme.labelSmall?.copyWith(
+              letterSpacing: 0.14,
+              color: const Color(0xFF8E9192),
+            ),
         hintText: widget.hint,
+        filled: true,
+        fillColor: const Color(0x66201F1F),
         prefixIcon: widget.icon != null ? Icon(widget.icon, size: 22) : null,
         suffixIcon: widget.obscureText
             ? IconButton(

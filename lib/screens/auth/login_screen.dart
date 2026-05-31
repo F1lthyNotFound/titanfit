@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../flavor/gym_flavor_service.dart';
 import '../../services/auth_service.dart';
+import '../../widgets/auth_error_banner.dart';
 import '../../widgets/gym_logo.dart';
 import '../../widgets/glass_panel.dart';
 import '../../widgets/pill_button.dart';
@@ -31,7 +32,7 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _login() async {
     final flavor = GymFlavorService.instance.flavor;
     if (flavor == null) {
-      context.go('/onboard');
+      context.go('/bootstrap');
       return;
     }
     setState(() {
@@ -55,8 +56,16 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final flavor = GymFlavorService.instance.flavor!;
+    final flavor = GymFlavorService.instance.flavor;
+    if (flavor == null) {
+      return const Scaffold(
+        backgroundColor: Color(0xFF000000),
+        body: Center(child: CircularProgressIndicator(color: Colors.white)),
+      );
+    }
+
     return Scaffold(
+      backgroundColor: const Color(0xFF000000),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -70,39 +79,62 @@ class _LoginScreenState extends State<LoginScreen> {
               constraints: const BoxConstraints(maxWidth: 420),
               child: Column(
                 children: [
-                  GymLogo(flavor: flavor, size: 64),
-                  const SizedBox(height: 16),
-                  Text(flavor.gymName, style: Theme.of(context).textTheme.headlineMedium),
-                  const SizedBox(height: 24),
+                  GymLogo(flavor: flavor, size: 72),
+                  const SizedBox(height: 20),
+                  Text(
+                    flavor.gymName.toUpperCase(),
+                    style: Theme.of(context).textTheme.headlineMedium,
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 28),
                   GlassPanel(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Text('Sign in', style: Theme.of(context).textTheme.titleMedium),
+                        Text(
+                          'SIGN IN',
+                          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                                fontSize: 28,
+                                color: Colors.white,
+                                letterSpacing: -0.5,
+                              ),
+                        ),
                         const SizedBox(height: 8),
                         Text(
                           'Use the username from your gym account.',
                           style: Theme.of(context).textTheme.bodyMedium,
                         ),
-                        const SizedBox(height: 20),
+                        const SizedBox(height: 24),
                         StitchTextField(
                           controller: _userCtrl,
                           label: 'Username',
+                          hint: 'Registered username',
                           icon: Icons.person_outline,
+                          textInputAction: TextInputAction.next,
+                          onSubmitted: (_) => FocusScope.of(context).nextFocus(),
                         ),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 16),
                         StitchTextField(
                           controller: _passCtrl,
                           label: 'Password',
+                          hint: 'Your password',
                           icon: Icons.lock_outline,
                           obscureText: true,
+                          textInputAction: TextInputAction.done,
                           onSubmitted: (_) => _login(),
                         ),
-                        if (_error != null) ...[
-                          const SizedBox(height: 12),
-                          Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
-                        ],
-                        const SizedBox(height: 20),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: TextButton(
+                            onPressed: _loading ? null : () => context.push('/forgot-password'),
+                            style: TextButton.styleFrom(
+                              foregroundColor: Theme.of(context).colorScheme.primary,
+                            ),
+                            child: const Text('Forgot password?'),
+                          ),
+                        ),
+                        AuthErrorBanner(message: _error),
+                        const SizedBox(height: 12),
                         PillButton(
                           label: 'Sign in',
                           loading: _loading,
@@ -112,10 +144,6 @@ class _LoginScreenState extends State<LoginScreen> {
                         TextButton(
                           onPressed: () => context.push('/register'),
                           child: const Text('Create member account'),
-                        ),
-                        TextButton(
-                          onPressed: () => context.go('/onboard'),
-                          child: const Text('Change gym'),
                         ),
                       ],
                     ),

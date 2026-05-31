@@ -1,6 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
+import '../config/api_config.dart';
 import '../flavor/gym_flavor.dart';
 
 class GymLogo extends StatelessWidget {
@@ -11,7 +12,9 @@ class GymLogo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final url = flavor.logoUrl;
+    final url = flavor.absoluteLogoUrl(
+      flavor.apiBase.isNotEmpty ? flavor.apiBase : ApiConfig.defaultApiBase,
+    );
     if (url.isEmpty) {
       return Container(
         width: size,

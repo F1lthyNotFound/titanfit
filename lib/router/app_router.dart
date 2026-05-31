@@ -2,11 +2,13 @@ import 'package:go_router/go_router.dart';
 
 import '../flavor/gym_flavor_service.dart';
 import '../screens/account/account_screen.dart';
+import '../screens/auth/forgot_password_screen.dart';
 import '../screens/auth/login_screen.dart';
 import '../screens/auth/register_screen.dart';
-import '../screens/bookings/bookings_screen.dart';
+import '../screens/history/history_screen.dart';
 import '../screens/home/home_screen.dart';
-import '../screens/onboarding/gym_select_screen.dart';
+import '../screens/membership/membership_screen.dart';
+import '../screens/onboarding/flavor_bootstrap_screen.dart';
 import '../screens/onboarding/member_onboarding_screen.dart';
 import '../screens/shell/main_shell.dart';
 import '../screens/wallet/wallet_screen.dart';
@@ -16,7 +18,7 @@ class AppRouter {
     final flavorService = GymFlavorService.instance;
 
     return GoRouter(
-      initialLocation: '/onboard',
+      initialLocation: '/bootstrap',
       refreshListenable: flavorService,
       redirect: (context, state) {
         final loc = state.matchedLocation;
@@ -24,10 +26,10 @@ class AppRouter {
         final loggedIn = flavorService.isLoggedIn;
         final onboarded = flavorService.onboardingComplete;
 
-        if (!hasFlavor && !loc.startsWith('/onboard')) {
-          return '/onboard';
+        if (!hasFlavor && loc != '/bootstrap') {
+          return '/bootstrap';
         }
-        if (hasFlavor && loc == '/onboard') {
+        if (hasFlavor && loc == '/bootstrap') {
           if (!loggedIn) return '/login';
           return onboarded ? '/home' : '/member-onboard';
         }
@@ -44,8 +46,8 @@ class AppRouter {
       },
       routes: [
         GoRoute(
-          path: '/onboard',
-          builder: (_, __) => const GymSelectScreen(),
+          path: '/bootstrap',
+          builder: (_, __) => const FlavorBootstrapScreen(),
         ),
         GoRoute(
           path: '/login',
@@ -56,8 +58,20 @@ class AppRouter {
           builder: (_, __) => const RegisterScreen(),
         ),
         GoRoute(
+          path: '/forgot-password',
+          builder: (_, __) => const ForgotPasswordScreen(),
+        ),
+        GoRoute(
           path: '/member-onboard',
           builder: (_, __) => const MemberOnboardingScreen(),
+        ),
+        GoRoute(
+          path: '/wallet',
+          builder: (_, __) => const WalletScreen(),
+        ),
+        GoRoute(
+          path: '/membership',
+          builder: (_, __) => const MembershipScreen(),
         ),
         StatefulShellRoute.indexedStack(
           builder: (context, state, navigationShell) {
@@ -75,16 +89,8 @@ class AppRouter {
             StatefulShellBranch(
               routes: [
                 GoRoute(
-                  path: '/bookings',
-                  builder: (_, __) => const BookingsScreen(),
-                ),
-              ],
-            ),
-            StatefulShellBranch(
-              routes: [
-                GoRoute(
-                  path: '/wallet',
-                  builder: (_, __) => const WalletScreen(),
+                  path: '/history',
+                  builder: (_, __) => const HistoryScreen(),
                 ),
               ],
             ),
@@ -104,8 +110,9 @@ class AppRouter {
 
   static bool _protected(String loc) {
     return loc.startsWith('/home') ||
-        loc.startsWith('/bookings') ||
+        loc.startsWith('/history') ||
+        loc.startsWith('/account') ||
         loc.startsWith('/wallet') ||
-        loc.startsWith('/account');
+        loc.startsWith('/membership');
   }
 }

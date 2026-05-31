@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../flavor/gym_flavor_service.dart';
 import '../../services/auth_service.dart';
+import '../../widgets/auth_error_banner.dart';
 import '../../widgets/gym_logo.dart';
 import '../../widgets/glass_panel.dart';
 import '../../widgets/pill_button.dart';
@@ -67,8 +68,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final flavor = GymFlavorService.instance.flavor!;
+    final flavor = GymFlavorService.instance.flavor;
+    if (flavor == null) {
+      return const Scaffold(
+        backgroundColor: Color(0xFF000000),
+        body: Center(child: CircularProgressIndicator(color: Colors.white)),
+      );
+    }
     return Scaffold(
+      backgroundColor: const Color(0xFF000000),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -82,12 +90,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
               constraints: const BoxConstraints(maxWidth: 420),
               child: Column(
                 children: [
-                  GymLogo(flavor: flavor, size: 56),
-                  const SizedBox(height: 12),
-                  Text('Create account', style: Theme.of(context).textTheme.headlineMedium),
+                  GymLogo(flavor: flavor, size: 64),
+                  const SizedBox(height: 16),
                   Text(
-                    'Join ${flavor.gymName}',
-                    style: Theme.of(context).textTheme.bodyMedium,
+                    'JOIN ${flavor.gymName.toUpperCase()}',
+                    style: Theme.of(context).textTheme.headlineMedium,
+                    textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 24),
                   GlassPanel(
@@ -95,7 +103,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         Text(
-                          'Initialize your member profile',
+                          'REGISTER',
+                          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                                fontSize: 28,
+                                color: Colors.white,
+                                letterSpacing: -0.5,
+                              ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Create your member profile for this gym.',
                           style: Theme.of(context).textTheme.bodyMedium,
                         ),
                         const SizedBox(height: 20),
@@ -103,6 +120,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           controller: _userCtrl,
                           label: 'Username',
                           icon: Icons.alternate_email,
+                          textInputAction: TextInputAction.next,
+                          onSubmitted: (_) => FocusScope.of(context).nextFocus(),
                         ),
                         const SizedBox(height: 12),
                         StitchTextField(
@@ -110,6 +129,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           label: 'Email',
                           icon: Icons.mail_outline,
                           keyboardType: TextInputType.emailAddress,
+                          textInputAction: TextInputAction.next,
+                          onSubmitted: (_) => FocusScope.of(context).nextFocus(),
                         ),
                         const SizedBox(height: 12),
                         StitchTextField(
@@ -117,6 +138,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           label: 'Password',
                           icon: Icons.lock_outline,
                           obscureText: true,
+                          textInputAction: TextInputAction.next,
+                          onSubmitted: (_) => FocusScope.of(context).nextFocus(),
                         ),
                         const SizedBox(height: 12),
                         StitchTextField(
@@ -124,12 +147,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           label: 'Confirm password',
                           icon: Icons.lock_outline,
                           obscureText: true,
+                          textInputAction: TextInputAction.done,
                           onSubmitted: (_) => _register(),
                         ),
-                        if (_error != null) ...[
-                          const SizedBox(height: 12),
-                          Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
-                        ],
+                        AuthErrorBanner(message: _error),
                         const SizedBox(height: 20),
                         PillButton(
                           label: 'Create account',
@@ -140,6 +161,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         TextButton(
                           onPressed: () => context.pop(),
                           child: const Text('Already have an account? Sign in'),
+                        ),
+                        TextButton(
+                          onPressed: () => context.push('/forgot-password'),
+                          child: const Text('Forgot password?'),
                         ),
                       ],
                     ),
