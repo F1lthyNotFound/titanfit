@@ -142,10 +142,17 @@ class MemberService {
     final res = await _client.get(ApiClient.mobileApiPath, query: {
       'action': 'get_member_profile',
     });
+    await _persistCookies();
     if (res['success'] == true && res['data'] is Map<String, dynamic>) {
       return MemberProfile.fromJson(res['data'] as Map<String, dynamic>);
     }
     return null;
+  }
+
+  Future<void> _persistCookies() async {
+    if (_client.cookieHeader.isNotEmpty) {
+      await GymFlavorService.instance.saveCookies(_client.cookieHeader);
+    }
   }
 
   Future<ProfileSaveResult> saveProfile({
@@ -180,6 +187,8 @@ class MemberService {
             files: {'avatar': avatarBytes},
           )
         : await _client.postForm(ApiClient.mobileApiPath, fields);
+
+    await _persistCookies();
 
     return ProfileSaveResult(
       ok: res['success'] == true,

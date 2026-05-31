@@ -214,6 +214,11 @@ class _MemberOnboardingScreenState extends State<MemberOnboardingScreen> {
     final flavor = GymFlavorService.instance.flavor;
     if (flavor == null) return;
 
+    if (_step == 0 && _firstCtrl.text.trim().isEmpty) {
+      setState(() => _error = 'Enter your first name');
+      return;
+    }
+
     setState(() {
       _loading = true;
       _error = null;
@@ -260,23 +265,38 @@ class _MemberOnboardingScreenState extends State<MemberOnboardingScreen> {
             children: [
               IconButton(onPressed: _back, icon: const Icon(Icons.arrow_back)),
               Expanded(
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: List.generate(_stepCount, (i) {
-                    final active = i == _step;
-                    final done = i < _step;
-                    return AnimatedContainer(
-                      duration: const Duration(milliseconds: 250),
-                      curve: Curves.easeOutCubic,
-                      margin: const EdgeInsets.symmetric(horizontal: 3),
-                      width: active ? 22 : 7,
-                      height: 7,
-                      decoration: BoxDecoration(
-                        color: done || active ? primary : muted.withValues(alpha: 0.35),
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                    );
-                  }),
+                child: Center(
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: List.generate(_stepCount, (i) {
+                      final active = i == _step;
+                      final done = i < _step;
+                      if (!active && !done) {
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 3),
+                          child: Container(
+                            width: 6,
+                            height: 6,
+                            decoration: BoxDecoration(
+                              color: muted.withValues(alpha: 0.25),
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                        );
+                      }
+                      return AnimatedContainer(
+                        duration: const Duration(milliseconds: 250),
+                        curve: Curves.easeOutCubic,
+                        margin: const EdgeInsets.symmetric(horizontal: 3),
+                        width: active ? 22 : 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: primary,
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                      );
+                    }),
+                  ),
                 ),
               ),
               if (_step < _stepCount - 1)
@@ -310,6 +330,7 @@ class _MemberOnboardingScreenState extends State<MemberOnboardingScreen> {
       duration: const Duration(milliseconds: 280),
       switchInCurve: Curves.easeOutCubic,
       switchOutCurve: Curves.easeInCubic,
+      layoutBuilder: (currentChild, _) => currentChild ?? const SizedBox.shrink(),
       transitionBuilder: (widget, animation) {
         final offset = _slideForward ? const Offset(0.08, 0) : const Offset(-0.08, 0);
         return FadeTransition(
@@ -321,6 +342,16 @@ class _MemberOnboardingScreenState extends State<MemberOnboardingScreen> {
         );
       },
       child: KeyedSubtree(key: ValueKey<int>(_step), child: child),
+    );
+  }
+
+  double get _keyboardPad => MediaQuery.viewInsetsOf(context).bottom;
+
+  Widget _scrollStep({required List<Widget> children, bool keyboard = false}) {
+    return ListView(
+      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+      padding: EdgeInsets.fromLTRB(24, 24, 24, 120 + (keyboard ? _keyboardPad : 0)),
+      children: children,
     );
   }
 
@@ -544,7 +575,7 @@ class _MemberOnboardingScreenState extends State<MemberOnboardingScreen> {
             ),
             if (_step < _stepCount - 1)
               Padding(
-                padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+                padding: EdgeInsets.fromLTRB(20, 8, 20, 16 + _keyboardPad),
                 child: PillButton(
                   label: 'Continue',
                   loading: _loading,
@@ -558,9 +589,8 @@ class _MemberOnboardingScreenState extends State<MemberOnboardingScreen> {
   }
 
   Widget _stepWho(GymFlavor flavor) {
-    return ListView(
-      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-      padding: const EdgeInsets.fromLTRB(24, 24, 24, 120),
+    return _scrollStep(
+      keyboard: true,
       children: [
         Center(child: _stepIcon(Icons.person_outline)),
         const SizedBox(height: 24),
@@ -578,9 +608,19 @@ class _MemberOnboardingScreenState extends State<MemberOnboardingScreen> {
           ),
         ),
         const SizedBox(height: 24),
-        StitchTextField(controller: _firstCtrl, hint: 'First name', icon: Icons.badge_outlined),
+        StitchTextField(
+          controller: _firstCtrl,
+          hint: 'First name',
+          icon: Icons.badge_outlined,
+          textInputAction: TextInputAction.next,
+        ),
         const SizedBox(height: 16),
-        StitchTextField(controller: _lastCtrl, hint: 'Last name', icon: Icons.badge_outlined),
+        StitchTextField(
+          controller: _lastCtrl,
+          hint: 'Last name',
+          icon: Icons.badge_outlined,
+          textInputAction: TextInputAction.done,
+        ),
         if (_error != null) ...[
           const SizedBox(height: 16),
           Text(_error!, textAlign: TextAlign.center, style: TextStyle(color: Theme.of(context).colorScheme.error)),
@@ -642,9 +682,8 @@ class _MemberOnboardingScreenState extends State<MemberOnboardingScreen> {
   }
 
   Widget _stepContact() {
-    return ListView(
-      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-      padding: const EdgeInsets.fromLTRB(24, 24, 24, 120),
+    return _scrollStep(
+      keyboard: true,
       children: [
         Center(child: _stepIcon(Icons.contact_phone_outlined)),
         const SizedBox(height: 24),
