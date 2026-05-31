@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import '../flavor/gym_flavor.dart';
 
@@ -116,7 +117,7 @@ class TitanTheme {
           textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
         ),
       ),
-      textTheme: _interTextTheme(onSurface, onVariant),
+      textTheme: _buildTextTheme(onSurface, onVariant),
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: isDark ? surfaceContainer : surfaceLight,
         indicatorColor: accentColor.withValues(alpha: 0.15),
@@ -124,39 +125,59 @@ class TitanTheme {
     );
   }
 
-  static TextTheme _interTextTheme(Color onSurface, Color onVariant) {
-    final base = Typography.material2021().black;
-    return base.copyWith(
-      headlineLarge: base.headlineLarge?.copyWith(
+  static TextTheme _buildTextTheme(Color onSurface, Color onVariant) {
+    return TextTheme(
+      displayLarge: GoogleFonts.sora(
         fontSize: 32,
         fontWeight: FontWeight.w700,
-        color: Colors.white,
         letterSpacing: -0.5,
+        color: onSurface,
       ),
-      headlineMedium: base.headlineMedium?.copyWith(
+      headlineLarge: GoogleFonts.sora(
+        fontSize: 32,
+        fontWeight: FontWeight.w700,
+        letterSpacing: -0.5,
+        color: Colors.white,
+      ),
+      headlineMedium: GoogleFonts.sora(
         fontSize: 24,
         fontWeight: FontWeight.w600,
-        color: onSurface,
         letterSpacing: -0.3,
+        color: onSurface,
       ),
-      titleMedium: base.titleMedium?.copyWith(
+      titleMedium: GoogleFonts.sora(
         fontSize: 16,
         fontWeight: FontWeight.w600,
         color: onSurface,
       ),
-      bodyLarge: base.bodyLarge?.copyWith(fontSize: 16, color: onSurface),
-      bodyMedium: base.bodyMedium?.copyWith(fontSize: 14, color: onVariant, height: 1.5),
-      labelLarge: base.labelLarge?.copyWith(
+      titleSmall: GoogleFonts.sora(
+        fontSize: 14,
+        fontWeight: FontWeight.w600,
+        color: onSurface,
+      ),
+      bodyLarge: GoogleFonts.inter(
+        fontSize: 15,
+        fontWeight: FontWeight.w400,
+        color: onSurface,
+        height: 1.5,
+      ),
+      bodyMedium: GoogleFonts.inter(
+        fontSize: 14,
+        fontWeight: FontWeight.w400,
+        color: onVariant,
+        height: 1.5,
+      ),
+      labelLarge: GoogleFonts.inter(
         fontSize: 14,
         fontWeight: FontWeight.w600,
         color: onSurface,
         letterSpacing: 0.08,
       ),
-      labelSmall: base.labelSmall?.copyWith(
+      labelSmall: GoogleFonts.inter(
         fontSize: 11,
         fontWeight: FontWeight.w500,
         color: onVariant,
-        letterSpacing: 0.12,
+        letterSpacing: 1.32,
       ),
     );
   }

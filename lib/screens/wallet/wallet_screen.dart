@@ -74,7 +74,7 @@ class _WalletScreenState extends State<WalletScreen> {
       return;
     }
     final uri = Uri.parse(result.checkoutUrl!);
-    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+    if (!await launchUrl(uri, mode: LaunchMode.inAppWebView)) {
       _flash('Could not open payment page');
       return;
     }

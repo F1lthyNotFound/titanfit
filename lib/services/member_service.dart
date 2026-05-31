@@ -70,6 +70,40 @@ class MemberWallet {
   }
 }
 
+class MemberHistoryItem {
+  const MemberHistoryItem({
+    required this.type,
+    required this.label,
+    this.amount,
+    required this.status,
+    required this.date,
+    this.iconHint = 'activity',
+  });
+
+  final String type;
+  final String label;
+  final double? amount;
+  final String status;
+  final String date;
+  final String iconHint;
+
+  factory MemberHistoryItem.fromJson(Map<String, dynamic> data) {
+    return MemberHistoryItem(
+      type: (data['type'] ?? '').toString(),
+      label: (data['label'] ?? '').toString(),
+      amount: data['amount'] == null ? null : (data['amount'] as num).toDouble(),
+      status: (data['status'] ?? '').toString(),
+      date: (data['date'] ?? '').toString(),
+      iconHint: (data['icon_hint'] ?? 'activity').toString(),
+    );
+  }
+
+  bool get isCheckIn => type == 'check_in';
+  bool get isTopUp =>
+      type == 'top_up' || type == 'top_up_pending' || type == 'top_up_paid';
+  bool get isBooking => type == 'booking';
+}
+
 class MemberService {
   MemberService(this._client);
 
@@ -131,6 +165,21 @@ class MemberService {
       return MemberWallet.fromJson(res['data'] as Map<String, dynamic>);
     }
     return null;
+  }
+
+  Future<List<MemberHistoryItem>> fetchHistory() async {
+    final res = await _client.get(ApiClient.mobileApiPath, query: {
+      'action': 'get_member_history',
+    });
+    if (res['success'] != true || res['data'] is! Map<String, dynamic>) {
+      return [];
+    }
+    final raw = (res['data'] as Map<String, dynamic>)['items'];
+    if (raw is! List) return [];
+    return raw
+        .whereType<Map<String, dynamic>>()
+        .map(MemberHistoryItem.fromJson)
+        .toList();
   }
 
   Future<WalletTopUpResult> requestTopUp(double amount) async {
