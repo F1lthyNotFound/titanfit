@@ -48,21 +48,27 @@ export ANDROID_HOME="$HOME/android-sdk-home"   # your SDK path
 flutter doctor --android-licenses
 ```
 
-## Run the app
+## Build APK locally (for releases)
 
 ```bash
 cd "/home/lawliet/Documents/Titanlabs app/titanfit"
-flutter pub get
-flutter run
+export PATH="$HOME/flutter/bin:$PATH"
+export ANDROID_HOME="$HOME/android-sdk-home"
+flutter build apk --release --dart-define=TITAN_API_BASE=https://titanlabs.up.railway.app
+cp build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/titanfit-release.apk
 ```
 
-Point API at your backend:
+**Gradle fix applied:** only `*.gradle.kts` files (removed duplicate `build.gradle`). Gradle **9.1.0** + AGP **9.0.1**.
 
-```bash
-flutter run --dart-define=TITAN_API_BASE=https://YOUR-RAILWAY-URL
-```
+Do **not** use `/usr/bin/flutter` on Arch (snapshot error). Use `~/flutter/bin` only.
 
-Or edit `lib/config/api_config.dart` → `defaultApiBase`.
+## Test via GitHub Release (recommended)
+
+Download from tenant landing or:
+
+https://github.com/F1lthyNotFound/titanfit/releases/latest/download/titanfit-release.apk?gym=YOUR-GYM-SLUG
+
+On first launch enter the gym code shown on the landing page.
 
 ## Release APK (GitHub)
 
