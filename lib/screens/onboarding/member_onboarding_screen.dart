@@ -92,8 +92,6 @@ class _MemberOnboardingScreenState extends State<MemberOnboardingScreen> {
     if (flavor == null) return;
     final profile = await MemberService.forFlavor(flavor).fetchProfile();
     if (profile == null || !mounted) return;
-    _firstCtrl.text = profile.firstName;
-    _lastCtrl.text = profile.lastName;
     _phoneCtrl.text = profile.phone;
     _gender = profile.gender;
     if (profile.dateOfBirth.isNotEmpty) {
