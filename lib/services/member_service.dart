@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import '../flavor/gym_flavor.dart';
 import '../flavor/gym_flavor_service.dart';
 import 'api_client.dart';
@@ -14,6 +16,7 @@ class MemberProfile {
     this.phone = '',
     this.socialInstagram = '',
     this.socialFacebook = '',
+    this.socialLinks = const {},
     this.avatarUrl = '',
     this.onboardingComplete = false,
   });
@@ -28,6 +31,7 @@ class MemberProfile {
   final String phone;
   final String socialInstagram;
   final String socialFacebook;
+  final Map<String, String> socialLinks;
   final String avatarUrl;
   final bool onboardingComplete;
 
@@ -43,11 +47,32 @@ class MemberProfile {
       phone: (data['phone'] ?? '').toString(),
       socialInstagram: (data['social_instagram'] ?? '').toString(),
       socialFacebook: (data['social_facebook'] ?? '').toString(),
+      socialLinks: _parseSocialLinks(data),
       avatarUrl: (data['avatar_url'] ?? '').toString(),
       onboardingComplete: data['onboarding_complete'] == true ||
           data['onboarding_complete'] == 1,
     );
   }
+
+  static Map<String, String> _parseSocialLinks(Map<String, dynamic> data) {
+    final raw = data['social_links'];
+    if (raw is Map) {
+      return raw.map((k, v) => MapEntry(k.toString(), v.toString()));
+    }
+    final links = <String, String>{};
+    final ig = (data['social_instagram'] ?? '').toString();
+    final fb = (data['social_facebook'] ?? '').toString();
+    if (ig.isNotEmpty) links['instagram'] = ig;
+    if (fb.isNotEmpty) links['facebook'] = fb;
+    return links;
+  }
+}
+
+class ProfileSaveResult {
+  const ProfileSaveResult({required this.ok, this.message = ''});
+
+  final bool ok;
+  final String message;
 }
 
 class MemberWallet {
@@ -123,7 +148,7 @@ class MemberService {
     return null;
   }
 
-  Future<bool> saveProfile({
+  Future<ProfileSaveResult> saveProfile({
     String? firstName,
     String? lastName,
     String? gender,
@@ -131,6 +156,7 @@ class MemberService {
     String? phone,
     String? socialInstagram,
     String? socialFacebook,
+    Map<String, String>? socialLinks,
     List<int>? avatarBytes,
     bool complete = false,
   }) async {
@@ -143,6 +169,7 @@ class MemberService {
       if (phone != null) 'phone': phone,
       if (socialInstagram != null) 'social_instagram': socialInstagram,
       if (socialFacebook != null) 'social_facebook': socialFacebook,
+      if (socialLinks != null) 'social_links_json': jsonEncode(socialLinks),
       if (complete) 'complete': '1',
     };
 
@@ -154,7 +181,10 @@ class MemberService {
           )
         : await _client.postForm(ApiClient.mobileApiPath, fields);
 
-    return res['success'] == true;
+    return ProfileSaveResult(
+      ok: res['success'] == true,
+      message: (res['message'] ?? '').toString(),
+    );
   }
 
   Future<MemberWallet?> fetchWallet() async {

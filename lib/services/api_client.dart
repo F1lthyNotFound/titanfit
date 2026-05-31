@@ -185,6 +185,7 @@ class ApiClient {
   }) async {
     Future<http.Response> send(Uri uri) async {
       final req = http.MultipartRequest('POST', uri);
+      req.headers['Accept'] = 'application/json';
       if (cookieHeader.isNotEmpty) {
         req.headers['Cookie'] = cookieHeader;
       }

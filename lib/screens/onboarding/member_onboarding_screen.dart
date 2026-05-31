@@ -7,11 +7,38 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../flavor/gym_flavor.dart';
 import '../../flavor/gym_flavor_service.dart';
-import '../../services/auth_service.dart';
 import '../../services/member_service.dart';
 import '../../widgets/gym_logo.dart';
 import '../../widgets/pill_button.dart';
 import '../../widgets/stitch_text_field.dart';
+
+enum SocialPlatform { facebook, instagram, whatsapp, other }
+
+extension SocialPlatformX on SocialPlatform {
+  String get key => name;
+
+  String get label => switch (this) {
+        SocialPlatform.facebook => 'Facebook',
+        SocialPlatform.instagram => 'Instagram',
+        SocialPlatform.whatsapp => 'WhatsApp',
+        SocialPlatform.other => 'Other',
+      };
+
+  IconData get icon => switch (this) {
+        SocialPlatform.facebook => Icons.facebook,
+        SocialPlatform.instagram => Icons.alternate_email,
+        SocialPlatform.whatsapp => Icons.chat_outlined,
+        SocialPlatform.other => Icons.link,
+      };
+}
+
+class _SocialEntry {
+  _SocialEntry({required this.platform, String url = ''})
+      : controller = TextEditingController(text: url);
+
+  SocialPlatform platform;
+  final TextEditingController controller;
+}
 
 class MemberOnboardingScreen extends StatefulWidget {
   const MemberOnboardingScreen({super.key});
@@ -29,8 +56,7 @@ class _MemberOnboardingScreenState extends State<MemberOnboardingScreen> {
   final _firstCtrl = TextEditingController();
   final _lastCtrl = TextEditingController();
   final _phoneCtrl = TextEditingController();
-  final _igCtrl = TextEditingController();
-  final _fbCtrl = TextEditingController();
+  final List<_SocialEntry> _socialEntries = [];
 
   String _gender = '';
   String _day = '';
@@ -39,6 +65,21 @@ class _MemberOnboardingScreenState extends State<MemberOnboardingScreen> {
   Uint8List? _avatarBytes;
 
   static const _stepCount = 5;
+
+  static const _steps = <(String title, String subtitle)>[
+    ('Your profile', 'Photo and name for your gym ID'),
+    ('About you', 'Pick what fits — or skip'),
+    ('Birthday', 'Optional — for age-based programs'),
+    ('Stay in touch', 'Phone and social links'),
+    ('You\'re in', ''),
+  ];
+
+  static SocialPlatform _platformFromKey(String platform) {
+    for (final p in SocialPlatform.values) {
+      if (p.key == platform) return p;
+    }
+    return SocialPlatform.other;
+  }
 
   @override
   void initState() {
@@ -49,8 +90,7 @@ class _MemberOnboardingScreenState extends State<MemberOnboardingScreen> {
   Future<void> _loadProfile() async {
     final flavor = GymFlavorService.instance.flavor;
     if (flavor == null) return;
-    final member = MemberService.forFlavor(flavor);
-    final profile = await member.fetchProfile();
+    final profile = await MemberService.forFlavor(flavor).fetchProfile();
     if (profile == null || !mounted) return;
     _firstCtrl.text = profile.firstName;
     _lastCtrl.text = profile.lastName;
@@ -64,6 +104,13 @@ class _MemberOnboardingScreenState extends State<MemberOnboardingScreen> {
         _day = parts[2];
       }
     }
+    for (final e in _socialEntries) {
+      e.controller.dispose();
+    }
+    _socialEntries.clear();
+    profile.socialLinks.forEach((platform, url) {
+      _socialEntries.add(_SocialEntry(platform: _platformFromKey(platform), url: url));
+    });
     setState(() {});
   }
 
@@ -72,8 +119,9 @@ class _MemberOnboardingScreenState extends State<MemberOnboardingScreen> {
     _firstCtrl.dispose();
     _lastCtrl.dispose();
     _phoneCtrl.dispose();
-    _igCtrl.dispose();
-    _fbCtrl.dispose();
+    for (final e in _socialEntries) {
+      e.controller.dispose();
+    }
     super.dispose();
   }
 
@@ -120,6 +168,7 @@ class _MemberOnboardingScreenState extends State<MemberOnboardingScreen> {
     setState(() {
       _slideForward = forward;
       _step = next;
+      _error = null;
     });
   }
 
@@ -140,6 +189,29 @@ class _MemberOnboardingScreenState extends State<MemberOnboardingScreen> {
     return '${_year.padLeft(4, '0')}-${_month.padLeft(2, '0')}-${_day.padLeft(2, '0')}';
   }
 
+  Map<String, String> _socialLinksPayload() {
+    final out = <String, String>{};
+    for (final e in _socialEntries) {
+      final url = e.controller.text.trim();
+      if (url.isEmpty) continue;
+      out[e.platform.key] = url;
+    }
+    return out;
+  }
+
+  void _addSocialLink() {
+    setState(() {
+      _socialEntries.add(_SocialEntry(platform: SocialPlatform.instagram));
+    });
+  }
+
+  void _removeSocialLink(int index) {
+    setState(() {
+      _socialEntries[index].controller.dispose();
+      _socialEntries.removeAt(index);
+    });
+  }
+
   Future<void> _saveStep({bool complete = false}) async {
     final flavor = GymFlavorService.instance.flavor;
     if (flavor == null) return;
@@ -149,15 +221,14 @@ class _MemberOnboardingScreenState extends State<MemberOnboardingScreen> {
       _error = null;
     });
 
-    final member = MemberService(AuthService.forFlavor(flavor).client);
-    final ok = await member.saveProfile(
+    final member = MemberService.forFlavor(flavor);
+    final result = await member.saveProfile(
       firstName: _step == 0 ? _firstCtrl.text.trim() : null,
       lastName: _step == 0 ? _lastCtrl.text.trim() : null,
-      gender: _step == 1 ? _gender : null,
+      gender: _step == 1 && _gender.isNotEmpty ? _gender : null,
       dateOfBirth: _step == 2 ? _dobIso() : null,
       phone: _step == 3 ? _phoneCtrl.text.trim() : null,
-      socialInstagram: _step == 3 ? _igCtrl.text.trim() : null,
-      socialFacebook: _step == 3 ? _fbCtrl.text.trim() : null,
+      socialLinks: _step == 3 ? _socialLinksPayload() : null,
       avatarBytes: _step == 0 ? _avatarBytes : null,
       complete: complete,
     );
@@ -165,8 +236,8 @@ class _MemberOnboardingScreenState extends State<MemberOnboardingScreen> {
     if (!mounted) return;
     setState(() => _loading = false);
 
-    if (!ok) {
-      setState(() => _error = 'Could not save — try again');
+    if (!result.ok) {
+      setState(() => _error = result.message.isNotEmpty ? result.message : 'Could not save — try again');
       return;
     }
 
@@ -180,10 +251,11 @@ class _MemberOnboardingScreenState extends State<MemberOnboardingScreen> {
 
   Widget _header() {
     final primary = Theme.of(context).colorScheme.primary;
-    final muted = Theme.of(context).dividerColor;
+    final muted = Theme.of(context).colorScheme.outline;
+    final (title, subtitle) = _steps[_step];
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(4, 8, 4, 0),
+      padding: const EdgeInsets.fromLTRB(4, 8, 8, 0),
       child: Column(
         children: [
           Row(
@@ -198,11 +270,11 @@ class _MemberOnboardingScreenState extends State<MemberOnboardingScreen> {
                     return AnimatedContainer(
                       duration: const Duration(milliseconds: 250),
                       curve: Curves.easeOutCubic,
-                      margin: const EdgeInsets.symmetric(horizontal: 4),
-                      width: active ? 24 : 8,
-                      height: 8,
+                      margin: const EdgeInsets.symmetric(horizontal: 3),
+                      width: active ? 22 : 7,
+                      height: 7,
                       decoration: BoxDecoration(
-                        color: done || active ? primary : muted.withValues(alpha: 0.5),
+                        color: done || active ? primary : muted.withValues(alpha: 0.35),
                         borderRadius: BorderRadius.circular(999),
                       ),
                     );
@@ -210,11 +282,26 @@ class _MemberOnboardingScreenState extends State<MemberOnboardingScreen> {
                 ),
               ),
               if (_step < _stepCount - 1)
-                TextButton(onPressed: _next, child: const Text('Skip'))
+                TextButton(
+                  onPressed: _next,
+                  style: TextButton.styleFrom(
+                    foregroundColor: Theme.of(context).colorScheme.onSurfaceVariant,
+                    textStyle: Theme.of(context).textTheme.labelLarge,
+                  ),
+                  child: const Text('Skip for now'),
+                )
               else
-                const SizedBox(width: 64),
+                const SizedBox(width: 72),
             ],
           ),
+          if (_step < _stepCount - 1) ...[
+            const SizedBox(height: 16),
+            Text(title, style: Theme.of(context).textTheme.titleMedium, textAlign: TextAlign.center),
+            if (subtitle.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Text(subtitle, style: Theme.of(context).textTheme.bodyMedium, textAlign: TextAlign.center),
+            ],
+          ],
         ],
       ),
     );
@@ -243,14 +330,14 @@ class _MemberOnboardingScreenState extends State<MemberOnboardingScreen> {
     return Icon(icon, size: 40, color: Theme.of(context).colorScheme.primary);
   }
 
-  Widget _genderTile(String value, IconData icon) {
+  Widget _genderTile(String value, IconData icon, {String? label}) {
     final selected = _gender == value;
     return Expanded(
       child: GestureDetector(
         onTap: () => setState(() => _gender = value),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 150),
-          padding: const EdgeInsets.symmetric(vertical: 24),
+          padding: EdgeInsets.symmetric(vertical: label == null ? 24 : 16),
           decoration: BoxDecoration(
             color: selected
                 ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.12)
@@ -262,25 +349,171 @@ class _MemberOnboardingScreenState extends State<MemberOnboardingScreen> {
                   : Theme.of(context).dividerColor,
             ),
           ),
-          child: Icon(
-            icon,
-            size: 36,
-            color: selected
-                ? Theme.of(context).colorScheme.primary
-                : Theme.of(context).colorScheme.onSurface,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                icon,
+                size: label == null ? 36 : 28,
+                color: selected
+                    ? Theme.of(context).colorScheme.primary
+                    : Theme.of(context).colorScheme.onSurface,
+              ),
+              if (label != null) ...[
+                const SizedBox(height: 8),
+                Text(
+                  label,
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.labelLarge?.copyWith(fontSize: 12),
+                ),
+              ],
+            ],
           ),
         ),
       ),
     );
   }
 
-  Widget _dobSelect(String hint, String value, List<String> items, ValueChanged<String> onChanged) {
+  Future<void> _pickFromSheet({
+    required String title,
+    required List<String> items,
+    required String current,
+    required ValueChanged<String> onPick,
+  }) async {
+    final picked = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Text(title, style: Theme.of(ctx).textTheme.titleSmall),
+              ),
+              Flexible(
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: items.length,
+                  itemBuilder: (_, i) {
+                    final item = items[i];
+                    final selected = item == current;
+                    return ListTile(
+                      dense: true,
+                      title: Text(item, style: Theme.of(ctx).textTheme.bodyLarge),
+                      trailing: selected ? Icon(Icons.check, color: Theme.of(ctx).colorScheme.primary) : null,
+                      onTap: () => Navigator.pop(ctx, item),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+    if (picked != null) onPick(picked);
+  }
+
+  Widget _compactPicker({
+    required String hint,
+    required String value,
+    required List<String> items,
+    required ValueChanged<String> onChanged,
+  }) {
+    final theme = Theme.of(context);
+    final display = value.isEmpty ? hint : value;
+
     return Expanded(
-      child: DropdownButtonFormField<String>(
-        initialValue: value.isEmpty ? null : value,
-        decoration: InputDecoration(hintText: hint),
-        items: items.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
-        onChanged: (v) => onChanged(v ?? ''),
+      child: Material(
+        color: theme.colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: () => _pickFromSheet(
+            title: hint,
+            items: items,
+            current: value,
+            onPick: onChanged,
+          ),
+          child: Container(
+            height: 48,
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            alignment: Alignment.center,
+            child: Text(
+              display,
+              style: theme.textTheme.bodyLarge?.copyWith(
+                color: value.isEmpty ? theme.colorScheme.outline : theme.colorScheme.onSurface,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _socialRow(int index, _SocialEntry entry) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 118,
+            child: Material(
+              color: Theme.of(context).colorScheme.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(12),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(12),
+                onTap: () => _pickFromSheet(
+                  title: 'Platform',
+                  items: SocialPlatform.values.map((p) => p.label).toList(),
+                  current: entry.platform.label,
+                  onPick: (label) {
+                    final p = SocialPlatform.values.firstWhere((v) => v.label == label);
+                    setState(() => entry.platform = p);
+                  },
+                ),
+                child: Container(
+                  height: 48,
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  alignment: Alignment.centerLeft,
+                  child: Row(
+                    children: [
+                      Icon(entry.platform.icon, size: 18),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          entry.platform.label,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.labelLarge?.copyWith(fontSize: 13),
+                        ),
+                      ),
+                      Icon(Icons.expand_more, size: 18, color: Theme.of(context).colorScheme.outline),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: StitchTextField(
+              controller: entry.controller,
+              hint: 'Paste link or handle',
+              icon: entry.platform.icon,
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.close, size: 20),
+            onPressed: () => _removeSocialLink(index),
+          ),
+        ],
       ),
     );
   }
@@ -300,9 +533,10 @@ class _MemberOnboardingScreenState extends State<MemberOnboardingScreen> {
     final flavor = GymFlavorService.instance.flavor!;
     final days = List.generate(31, (i) => '${i + 1}'.padLeft(2, '0'));
     final months = List.generate(12, (i) => '${i + 1}'.padLeft(2, '0'));
-    final years = List.generate(80, (i) => '${DateTime.now().year - 18 - i}');
+    final years = List.generate(80, (i) => '${DateTime.now().year - 18 - i}'.toString());
 
     return Scaffold(
+      resizeToAvoidBottomInset: false,
       body: SafeArea(
         child: Column(
           children: [
@@ -312,12 +546,7 @@ class _MemberOnboardingScreenState extends State<MemberOnboardingScreen> {
             ),
             if (_step < _stepCount - 1)
               Padding(
-                padding: EdgeInsets.fromLTRB(
-                  20,
-                  8,
-                  20,
-                  16 + MediaQuery.viewInsetsOf(context).bottom,
-                ),
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
                 child: PillButton(
                   label: 'Continue',
                   loading: _loading,
@@ -332,11 +561,10 @@ class _MemberOnboardingScreenState extends State<MemberOnboardingScreen> {
 
   Widget _stepWho(GymFlavor flavor) {
     return ListView(
-      padding: const EdgeInsets.all(24),
+      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+      padding: const EdgeInsets.fromLTRB(24, 24, 24, 120),
       children: [
         Center(child: _stepIcon(Icons.person_outline)),
-        const SizedBox(height: 24),
-        Text('Who are you?', textAlign: TextAlign.center, style: Theme.of(context).textTheme.headlineMedium),
         const SizedBox(height: 24),
         Center(
           child: GestureDetector(
@@ -352,11 +580,11 @@ class _MemberOnboardingScreenState extends State<MemberOnboardingScreen> {
           ),
         ),
         const SizedBox(height: 24),
-        StitchTextField(controller: _firstCtrl, label: 'First name', icon: Icons.badge_outlined),
-        const SizedBox(height: 24),
-        StitchTextField(controller: _lastCtrl, label: 'Last name', icon: Icons.badge_outlined),
+        StitchTextField(controller: _firstCtrl, hint: 'First name', icon: Icons.badge_outlined),
+        const SizedBox(height: 16),
+        StitchTextField(controller: _lastCtrl, hint: 'Last name', icon: Icons.badge_outlined),
         if (_error != null) ...[
-          const SizedBox(height: 24),
+          const SizedBox(height: 16),
           Text(_error!, textAlign: TextAlign.center, style: TextStyle(color: Theme.of(context).colorScheme.error)),
         ],
       ],
@@ -365,70 +593,91 @@ class _MemberOnboardingScreenState extends State<MemberOnboardingScreen> {
 
   Widget _stepGender() {
     return ListView(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.fromLTRB(24, 24, 24, 120),
       children: [
         Center(child: _stepIcon(Icons.wc_outlined)),
         const SizedBox(height: 24),
-        Text('About you', textAlign: TextAlign.center, style: Theme.of(context).textTheme.headlineMedium),
-        const SizedBox(height: 24),
         Row(
           children: [
-            _genderTile('female', Icons.female),
+            _genderTile('female', Icons.female, label: 'Female'),
             const SizedBox(width: 12),
-            _genderTile('male', Icons.male),
+            _genderTile('male', Icons.male, label: 'Male'),
           ],
         ),
         const SizedBox(height: 12),
         Row(
           children: [
-            _genderTile('nonbinary', Icons.transgender),
+            _genderTile('nonbinary', Icons.transgender, label: 'Non-binary'),
             const SizedBox(width: 12),
-            _genderTile('skip', Icons.remove_circle_outline),
+            _genderTile('prefer_not_to_say', Icons.visibility_off_outlined, label: 'Prefer not to say'),
           ],
         ),
+        if (_error != null) ...[
+          const SizedBox(height: 16),
+          Text(_error!, textAlign: TextAlign.center, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+        ],
       ],
     );
   }
 
   Widget _stepDob(List<String> days, List<String> months, List<String> years) {
     return ListView(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.fromLTRB(24, 24, 24, 120),
       children: [
         Center(child: _stepIcon(Icons.cake_outlined)),
         const SizedBox(height: 24),
-        Text('Birthday', textAlign: TextAlign.center, style: Theme.of(context).textTheme.headlineMedium),
-        const SizedBox(height: 24),
         Row(
           children: [
-            _dobSelect('Day', _day, days, (v) => setState(() => _day = v)),
-            const SizedBox(width: 12),
-            _dobSelect('Month', _month, months, (v) => setState(() => _month = v)),
-            const SizedBox(width: 12),
-            _dobSelect('Year', _year, years.map((e) => e.toString()).toList(), (v) => setState(() => _year = v)),
+            _compactPicker(hint: 'Day', value: _day, items: days, onChanged: (v) => setState(() => _day = v)),
+            const SizedBox(width: 8),
+            _compactPicker(hint: 'Month', value: _month, items: months, onChanged: (v) => setState(() => _month = v)),
+            const SizedBox(width: 8),
+            _compactPicker(hint: 'Year', value: _year, items: years, onChanged: (v) => setState(() => _year = v)),
           ],
         ),
+        if (_error != null) ...[
+          const SizedBox(height: 16),
+          Text(_error!, textAlign: TextAlign.center, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+        ],
       ],
     );
   }
 
   Widget _stepContact() {
     return ListView(
-      padding: const EdgeInsets.all(24),
+      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+      padding: const EdgeInsets.fromLTRB(24, 24, 24, 120),
       children: [
         Center(child: _stepIcon(Icons.contact_phone_outlined)),
         const SizedBox(height: 24),
-        Text('Stay in touch', textAlign: TextAlign.center, style: Theme.of(context).textTheme.headlineMedium),
-        const SizedBox(height: 24),
         StitchTextField(
           controller: _phoneCtrl,
-          label: 'Phone',
+          hint: 'Phone number',
           icon: Icons.phone_outlined,
           keyboardType: TextInputType.phone,
         ),
         const SizedBox(height: 24),
-        StitchTextField(controller: _igCtrl, label: 'Instagram', icon: Icons.alternate_email),
-        const SizedBox(height: 24),
-        StitchTextField(controller: _fbCtrl, label: 'Facebook', icon: Icons.facebook),
+        Row(
+          children: [
+            Text('Social links', style: Theme.of(context).textTheme.titleSmall),
+            const Spacer(),
+            TextButton.icon(
+              onPressed: _addSocialLink,
+              icon: const Icon(Icons.add, size: 18),
+              label: const Text('Add'),
+            ),
+          ],
+        ),
+        if (_socialEntries.isEmpty)
+          Text(
+            'Optional — tap Add to link Facebook, Instagram, WhatsApp, or other.',
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+        ...List.generate(_socialEntries.length, (i) => _socialRow(i, _socialEntries[i])),
+        if (_error != null) ...[
+          const SizedBox(height: 16),
+          Text(_error!, textAlign: TextAlign.center, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+        ],
       ],
     );
   }
@@ -442,31 +691,21 @@ class _MemberOnboardingScreenState extends State<MemberOnboardingScreen> {
           tween: Tween(begin: 0.8, end: 1),
           duration: const Duration(milliseconds: 600),
           curve: Curves.elasticOut,
-          builder: (context, scale, child) {
-            return Transform.scale(scale: scale, child: child);
-          },
+          builder: (context, scale, child) => Transform.scale(scale: scale, child: child),
           child: Center(child: GymLogo(flavor: flavor, size: 96)),
         ),
         const SizedBox(height: 24),
-        Text(
-          'You\'re in!',
-          textAlign: TextAlign.center,
-          style: Theme.of(context).textTheme.headlineLarge,
-        ),
-        const SizedBox(height: 24),
+        Text('You\'re in!', textAlign: TextAlign.center, style: Theme.of(context).textTheme.headlineLarge),
+        const SizedBox(height: 16),
         Text(
           'Welcome to ${flavor.gymName}.',
           textAlign: TextAlign.center,
           style: Theme.of(context).textTheme.bodyMedium,
         ),
         const SizedBox(height: 32),
-        PillButton(
-          label: "Let's go",
-          loading: _loading,
-          onPressed: () => _saveStep(complete: true),
-        ),
+        PillButton(label: "Let's go", loading: _loading, onPressed: () => _saveStep(complete: true)),
         if (_error != null) ...[
-          const SizedBox(height: 24),
+          const SizedBox(height: 16),
           Text(_error!, textAlign: TextAlign.center, style: TextStyle(color: Theme.of(context).colorScheme.error)),
         ],
       ],

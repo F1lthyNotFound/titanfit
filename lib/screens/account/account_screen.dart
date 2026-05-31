@@ -110,7 +110,7 @@ class _AccountScreenState extends State<AccountScreen> {
       _saving = true;
       _error = null;
     });
-    final ok = await MemberService.forFlavor(flavor).saveProfile(
+    final result = await MemberService.forFlavor(flavor).saveProfile(
       firstName: _firstCtrl.text.trim(),
       lastName: _lastCtrl.text.trim(),
       phone: _phoneCtrl.text.trim(),
@@ -121,11 +121,11 @@ class _AccountScreenState extends State<AccountScreen> {
     );
     if (!mounted) return;
     setState(() => _saving = false);
-    if (ok) {
+    if (result.ok) {
       setState(() => _editing = false);
       await _load();
     } else {
-      setState(() => _error = 'Could not save profile');
+      setState(() => _error = result.message.isNotEmpty ? result.message : 'Could not save profile');
     }
   }
 
