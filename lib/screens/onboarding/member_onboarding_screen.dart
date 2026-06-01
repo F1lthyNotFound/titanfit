@@ -219,6 +219,11 @@ class _MemberOnboardingScreenState extends State<MemberOnboardingScreen> {
       return;
     }
 
+    if (GymFlavorService.instance.cookieHeader.isEmpty) {
+      setState(() => _error = 'Session expired — go back to sign in');
+      return;
+    }
+
     setState(() {
       _loading = true;
       _error = null;
@@ -241,7 +246,7 @@ class _MemberOnboardingScreenState extends State<MemberOnboardingScreen> {
 
     if (!result.ok) {
       if (result.unauthorized) {
-        context.go('/login');
+        setState(() => _error = result.message);
         return;
       }
       setState(() => _error = result.message.isNotEmpty ? result.message : 'Could not save — try again');

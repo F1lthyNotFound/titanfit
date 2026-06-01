@@ -2,6 +2,7 @@ import '../flavor/gym_flavor.dart';
 import '../flavor/gym_flavor_service.dart';
 import 'api_client.dart';
 import 'member_service.dart';
+import 'session_cookies.dart';
 
 /// Member auth — all calls go through [ApiClient.mobileApiPath] (app.php), not auth.php.
 class AuthService {
@@ -94,26 +95,14 @@ class AuthService {
   /// Cookie jar on mobile often miss Set-Cookie — use session_token from JSON body.
   Future<void> _applySessionFromResponse(Map<String, dynamic> res) async {
     var header = _client.cookieHeader;
-    final tok = (res['session_token'] ?? '').toString().trim();
-    if (tok.isNotEmpty) {
-      header = _upsertCookie(header, 'titan_session', tok);
+    final tok = SessionCookies.tokenFromResponse(res);
+    if (tok != null) {
+      header = SessionCookies.upsert(header, SessionCookies.sessionName, tok);
       _client.cookieHeader = header;
     }
     if (header.isNotEmpty) {
       await GymFlavorService.instance.saveCookies(header);
     }
-  }
-
-  String _upsertCookie(String header, String name, String value) {
-    final merged = <String, String>{};
-    if (header.isNotEmpty) {
-      for (final pair in header.split(';')) {
-        final kv = pair.trim().split('=');
-        if (kv.length >= 2) merged[kv[0].trim()] = kv.sublist(1).join('=');
-      }
-    }
-    merged[name] = value;
-    return merged.entries.map((e) => '${e.key}=${e.value}').join('; ');
   }
 
   Future<void> logout() async {

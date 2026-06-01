@@ -3,6 +3,7 @@ import 'dart:convert';
 import '../flavor/gym_flavor.dart';
 import '../flavor/gym_flavor_service.dart';
 import 'api_client.dart';
+import 'session_cookies.dart';
 
 class MemberProfile {
   const MemberProfile({
@@ -147,19 +148,29 @@ class MemberService {
     final res = await _client.get(ApiClient.mobileApiPath, query: {
       'action': 'get_member_profile',
     });
-    await _persistCookies();
+    await _persistCookies(res);
     if (res['success'] == true && res['data'] is Map<String, dynamic>) {
       return MemberProfile.fromJson(res['data'] as Map<String, dynamic>);
     }
     return null;
   }
 
-  Future<void> _persistCookies() async {
-    await GymFlavorService.instance.saveCookies(_client.cookieHeader);
+  Future<void> _persistCookies([Map<String, dynamic>? res]) async {
+    var header = _client.cookieHeader;
+    if (res != null) {
+      final tok = SessionCookies.tokenFromResponse(res);
+      if (tok != null) {
+        header = SessionCookies.upsert(header, SessionCookies.sessionName, tok);
+        _client.cookieHeader = header;
+      }
+    }
+    if (header.isNotEmpty) {
+      await GymFlavorService.instance.saveCookies(header);
+    }
   }
 
   Future<ProfileSaveResult> _resultFromResponse(Map<String, dynamic> res) async {
-    await _persistCookies();
+    await _persistCookies(res);
     final message = (res['message'] ?? '').toString();
     if (res['success'] == true) {
       return ProfileSaveResult(ok: true, message: message);
@@ -167,7 +178,7 @@ class MemberService {
     if (message.toLowerCase().contains('unauthorized')) {
       return const ProfileSaveResult(
         ok: false,
-        message: 'Session expired — please sign in again',
+        message: 'Session expired — go back to sign in',
         unauthorized: true,
       );
     }

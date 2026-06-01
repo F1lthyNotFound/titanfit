@@ -80,16 +80,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
         ),
       );
     }
-
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Align(
-              alignment: Alignment.centerLeft,
-              child: ThemeToggleButton(),
+            Row(
+              children: [
+                const ThemeToggleButton(),
+                IconButton(
+                  icon: const Icon(Icons.arrow_back),
+                  onPressed: () => context.pop(),
+                ),
+              ],
             ),
             Expanded(
               child: Center(

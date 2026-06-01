@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../flavor/gym_flavor.dart';
 
@@ -90,7 +89,7 @@ class TitanTheme {
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: isDark ? surfaceContainer : surfaceContainer,
+        fillColor: surfaceContainer,
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -127,53 +126,53 @@ class TitanTheme {
 
   static TextTheme _buildTextTheme(Color onSurface, Color onVariant) {
     return TextTheme(
-      displayLarge: GoogleFonts.sora(
+      displayLarge: TextStyle(
         fontSize: 32,
         fontWeight: FontWeight.w700,
         letterSpacing: -0.5,
         color: onSurface,
       ),
-      headlineLarge: GoogleFonts.sora(
+      headlineLarge: TextStyle(
         fontSize: 32,
         fontWeight: FontWeight.w700,
         letterSpacing: -0.5,
         color: onSurface,
       ),
-      headlineMedium: GoogleFonts.sora(
+      headlineMedium: TextStyle(
         fontSize: 24,
         fontWeight: FontWeight.w600,
         letterSpacing: -0.3,
         color: onSurface,
       ),
-      titleMedium: GoogleFonts.sora(
+      titleMedium: TextStyle(
         fontSize: 16,
         fontWeight: FontWeight.w600,
         color: onSurface,
       ),
-      titleSmall: GoogleFonts.sora(
+      titleSmall: TextStyle(
         fontSize: 14,
         fontWeight: FontWeight.w600,
         color: onSurface,
       ),
-      bodyLarge: GoogleFonts.inter(
+      bodyLarge: TextStyle(
         fontSize: 15,
         fontWeight: FontWeight.w400,
         color: onSurface,
         height: 1.5,
       ),
-      bodyMedium: GoogleFonts.inter(
+      bodyMedium: TextStyle(
         fontSize: 14,
         fontWeight: FontWeight.w400,
         color: onVariant,
         height: 1.5,
       ),
-      labelLarge: GoogleFonts.inter(
+      labelLarge: TextStyle(
         fontSize: 14,
         fontWeight: FontWeight.w600,
         color: onSurface,
         letterSpacing: 0.08,
       ),
-      labelSmall: GoogleFonts.inter(
+      labelSmall: TextStyle(
         fontSize: 11,
         fontWeight: FontWeight.w500,
         color: onVariant,
