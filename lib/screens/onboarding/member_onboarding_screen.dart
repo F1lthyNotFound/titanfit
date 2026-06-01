@@ -240,6 +240,10 @@ class _MemberOnboardingScreenState extends State<MemberOnboardingScreen> {
     setState(() => _loading = false);
 
     if (!result.ok) {
+      if (result.unauthorized) {
+        context.go('/login');
+        return;
+      }
       setState(() => _error = result.message.isNotEmpty ? result.message : 'Could not save — try again');
       return;
     }

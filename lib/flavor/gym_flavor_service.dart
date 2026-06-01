@@ -37,7 +37,7 @@ class GymFlavorService extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     _onboardingComplete = prefs.getBool(_keyOnboardingDone) ?? false;
     _loggedIn = prefs.getBool(_keyLoggedIn) ?? false;
-    _cookieHeader = prefs.getString(_keyCookies) ?? '';
+    _cookieHeader = _loggedIn ? (prefs.getString(_keyCookies) ?? '') : '';
     final raw = prefs.getString(_keyFlavor);
     if (raw != null && raw.isNotEmpty) {
       try {
