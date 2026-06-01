@@ -5,9 +5,11 @@ import 'package:go_router/go_router.dart';
 import 'package:image/image.dart' as img;
 import 'package:image_picker/image_picker.dart';
 
+import '../../config/app_version.dart';
 import '../../flavor/gym_flavor.dart';
 import '../../flavor/gym_flavor_service.dart';
 import '../../services/member_service.dart';
+import '../../theme/theme_service.dart';
 import '../../widgets/gym_logo.dart';
 import '../../widgets/pill_button.dart';
 import '../../widgets/stitch_text_field.dart';
@@ -51,7 +53,6 @@ class _MemberOnboardingScreenState extends State<MemberOnboardingScreen> {
   int _step = 0;
   bool _loading = false;
   String? _error;
-  bool _slideForward = true;
 
   final _firstCtrl = TextEditingController();
   final _lastCtrl = TextEditingController();
@@ -162,9 +163,8 @@ class _MemberOnboardingScreenState extends State<MemberOnboardingScreen> {
     });
   }
 
-  void _goToStep(int next, {bool forward = true}) {
+  void _goToStep(int next) {
     setState(() {
-      _slideForward = forward;
       _step = next;
       _error = null;
     });
@@ -176,7 +176,7 @@ class _MemberOnboardingScreenState extends State<MemberOnboardingScreen> {
 
   void _back() {
     if (_step > 0) {
-      _goToStep(_step - 1, forward: false);
+      _goToStep(_step - 1);
     } else {
       context.go('/login');
     }
@@ -219,6 +219,12 @@ class _MemberOnboardingScreenState extends State<MemberOnboardingScreen> {
       return;
     }
 
+    if (GymFlavorService.instance.cookieHeader.isEmpty) {
+      setState(() => _error = 'Session expired — please sign in again');
+      if (mounted) context.go('/login');
+      return;
+    }
+
     setState(() {
       _loading = true;
       _error = null;
@@ -240,12 +246,19 @@ class _MemberOnboardingScreenState extends State<MemberOnboardingScreen> {
     setState(() => _loading = false);
 
     if (!result.ok) {
+      if (result.unauthorized) {
+        context.go('/login');
+        return;
+      }
       setState(() => _error = result.message.isNotEmpty ? result.message : 'Could not save — try again');
       return;
     }
 
     if (complete) {
-      await GymFlavorService.instance.setOnboardingComplete(true);
+      await GymFlavorService.instance.setSession(
+        loggedIn: true,
+        onboardingComplete: true,
+      );
       if (mounted) context.go('/home');
     } else {
       _next();
@@ -254,8 +267,9 @@ class _MemberOnboardingScreenState extends State<MemberOnboardingScreen> {
 
   Widget _header() {
     final primary = Theme.of(context).colorScheme.primary;
-    final muted = Theme.of(context).colorScheme.outline;
     final (title, subtitle) = _steps[_step];
+    final themeService = ThemeService.instance;
+    final progress = (_step + 1) / _stepCount;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(4, 8, 8, 0),
@@ -263,39 +277,20 @@ class _MemberOnboardingScreenState extends State<MemberOnboardingScreen> {
         children: [
           Row(
             children: [
+              IconButton(
+                tooltip: themeService.isDark ? 'Light mode' : 'Dark mode',
+                onPressed: themeService.toggle,
+                icon: Icon(themeService.isDark ? Icons.light_mode_outlined : Icons.dark_mode_outlined),
+              ),
               IconButton(onPressed: _back, icon: const Icon(Icons.arrow_back)),
               Expanded(
-                child: Center(
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: List.generate(_stepCount, (i) {
-                      final active = i == _step;
-                      final done = i < _step;
-                      if (!active && !done) {
-                        return Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 3),
-                          child: Container(
-                            width: 6,
-                            height: 6,
-                            decoration: BoxDecoration(
-                              color: muted.withValues(alpha: 0.25),
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                        );
-                      }
-                      return AnimatedContainer(
-                        duration: const Duration(milliseconds: 250),
-                        curve: Curves.easeOutCubic,
-                        margin: const EdgeInsets.symmetric(horizontal: 3),
-                        width: active ? 22 : 8,
-                        height: 8,
-                        decoration: BoxDecoration(
-                          color: primary,
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                      );
-                    }),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(999),
+                  child: LinearProgressIndicator(
+                    value: progress,
+                    minHeight: 4,
+                    backgroundColor: Colors.transparent,
+                    color: primary,
                   ),
                 ),
               ),
@@ -322,26 +317,6 @@ class _MemberOnboardingScreenState extends State<MemberOnboardingScreen> {
           ],
         ],
       ),
-    );
-  }
-
-  Widget _animatedStep(Widget child) {
-    return AnimatedSwitcher(
-      duration: const Duration(milliseconds: 280),
-      switchInCurve: Curves.easeOutCubic,
-      switchOutCurve: Curves.easeInCubic,
-      layoutBuilder: (currentChild, _) => currentChild ?? const SizedBox.shrink(),
-      transitionBuilder: (widget, animation) {
-        final offset = _slideForward ? const Offset(0.08, 0) : const Offset(-0.08, 0);
-        return FadeTransition(
-          opacity: animation,
-          child: SlideTransition(
-            position: Tween<Offset>(begin: offset, end: Offset.zero).animate(animation),
-            child: widget,
-          ),
-        );
-      },
-      child: KeyedSubtree(key: ValueKey<int>(_step), child: child),
     );
   }
 
@@ -569,9 +544,21 @@ class _MemberOnboardingScreenState extends State<MemberOnboardingScreen> {
       body: SafeArea(
         child: Column(
           children: [
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Padding(
+                padding: const EdgeInsets.only(left: 12, top: 2),
+                child: Text(
+                  'v$kAppVersion',
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: Theme.of(context).colorScheme.outline,
+                      ),
+                ),
+              ),
+            ),
             _header(),
             Expanded(
-              child: _animatedStep(_currentStep(flavor, days, months, years)),
+              child: _currentStep(flavor, days, months, years),
             ),
             if (_step < _stepCount - 1)
               Padding(
@@ -613,6 +600,7 @@ class _MemberOnboardingScreenState extends State<MemberOnboardingScreen> {
           hint: 'First name',
           icon: Icons.badge_outlined,
           textInputAction: TextInputAction.next,
+          autofocus: true,
         ),
         const SizedBox(height: 16),
         StitchTextField(

@@ -19,6 +19,7 @@ class GymFlavorService extends ChangeNotifier {
   static const _keyCookies = 'titanfit_session_cookies';
 
   GymFlavor? _flavor;
+  ApiClient? _client;
   String _cookieHeader = '';
   bool _loggedIn = false;
   bool _onboardingComplete = false;
@@ -34,9 +35,17 @@ class GymFlavorService extends ChangeNotifier {
 
   Future<void> init() async {
     final prefs = await SharedPreferences.getInstance();
-    _loggedIn = prefs.getBool(_keyLoggedIn) ?? false;
     _onboardingComplete = prefs.getBool(_keyOnboardingDone) ?? false;
-    _cookieHeader = prefs.getString(_keyCookies) ?? '';
+    // Unfinished onboarding → force login on cold start.
+    if (_onboardingComplete) {
+      _loggedIn = prefs.getBool(_keyLoggedIn) ?? false;
+      _cookieHeader = _loggedIn ? (prefs.getString(_keyCookies) ?? '') : '';
+    } else {
+      _loggedIn = false;
+      _cookieHeader = '';
+      await prefs.remove(_keyLoggedIn);
+      await prefs.remove(_keyCookies);
+    }
     final raw = prefs.getString(_keyFlavor);
     if (raw != null && raw.isNotEmpty) {
       try {
@@ -166,6 +175,7 @@ class GymFlavorService extends ChangeNotifier {
 
   Future<void> saveCookies(String header) async {
     _cookieHeader = header;
+    _client?.cookieHeader = header;
     final prefs = await SharedPreferences.getInstance();
     if (header.isEmpty) {
       await prefs.remove(_keyCookies);
@@ -174,9 +184,27 @@ class GymFlavorService extends ChangeNotifier {
     }
   }
 
+  /// Shared client — keeps session cookies in sync across auth + profile calls.
   ApiClient apiClientFor(GymFlavor flavor) {
     final base = flavor.apiBase.isNotEmpty ? flavor.apiBase : ApiConfig.defaultApiBase;
-    return ApiClient(baseUrl: base, cookieHeader: _cookieHeader);
+    if (_client == null || _client!.baseUrl != base) {
+      _client = ApiClient(baseUrl: base, cookieHeader: _cookieHeader);
+    } else {
+      _client!.cookieHeader = _cookieHeader;
+    }
+    return _client!;
+  }
+
+  Future<void> clearAuthSession() async {
+    _loggedIn = false;
+    _onboardingComplete = false;
+    _cookieHeader = '';
+    _client?.cookieHeader = '';
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_keyLoggedIn);
+    await prefs.remove(_keyOnboardingDone);
+    await prefs.remove(_keyCookies);
+    notifyListeners();
   }
 
   Future<void> clearFlavor() async {

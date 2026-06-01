@@ -69,10 +69,15 @@ class MemberProfile {
 }
 
 class ProfileSaveResult {
-  const ProfileSaveResult({required this.ok, this.message = ''});
+  const ProfileSaveResult({
+    required this.ok,
+    this.message = '',
+    this.unauthorized = false,
+  });
 
   final bool ok;
   final String message;
+  final bool unauthorized;
 }
 
 class MemberWallet {
@@ -150,9 +155,27 @@ class MemberService {
   }
 
   Future<void> _persistCookies() async {
-    if (_client.cookieHeader.isNotEmpty) {
-      await GymFlavorService.instance.saveCookies(_client.cookieHeader);
+    await GymFlavorService.instance.saveCookies(_client.cookieHeader);
+  }
+
+  Future<ProfileSaveResult> _resultFromResponse(Map<String, dynamic> res) async {
+    await _persistCookies();
+    final message = (res['message'] ?? '').toString();
+    if (res['success'] == true) {
+      return ProfileSaveResult(ok: true, message: message);
     }
+    if (message.toLowerCase().contains('unauthorized')) {
+      await GymFlavorService.instance.clearAuthSession();
+      return const ProfileSaveResult(
+        ok: false,
+        message: 'Session expired — please sign in again',
+        unauthorized: true,
+      );
+    }
+    return ProfileSaveResult(
+      ok: false,
+      message: message.isNotEmpty ? message : 'Could not save — try again',
+    );
   }
 
   Future<ProfileSaveResult> saveProfile({
@@ -188,12 +211,7 @@ class MemberService {
           )
         : await _client.postForm(ApiClient.mobileApiPath, fields);
 
-    await _persistCookies();
-
-    return ProfileSaveResult(
-      ok: res['success'] == true,
-      message: (res['message'] ?? '').toString(),
-    );
+    return _resultFromResponse(res);
   }
 
   Future<MemberWallet?> fetchWallet() async {

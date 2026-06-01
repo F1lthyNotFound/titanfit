@@ -66,8 +66,6 @@ class ApiClient {
       };
 
   void _captureCookies(http.Response response) {
-    final raw = response.headers['set-cookie'];
-    if (raw == null || raw.isEmpty) return;
     final merged = <String, String>{};
     if (cookieHeader.isNotEmpty) {
       for (final pair in cookieHeader.split(';')) {
@@ -75,13 +73,20 @@ class ApiClient {
         if (kv.length >= 2) merged[kv[0]] = kv.sublist(1).join('=');
       }
     }
-    for (final chunk in _splitSetCookie(raw)) {
-      final part = chunk.split(';').first.trim();
-      final eq = part.indexOf('=');
-      if (eq > 0) {
-        merged[part.substring(0, eq).trim()] = part.substring(eq + 1);
+
+    // http package lowercases header keys; some servers emit multiple Set-Cookie lines.
+    for (final entry in response.headers.entries) {
+      if (entry.key.toLowerCase() != 'set-cookie') continue;
+      for (final chunk in _splitSetCookie(entry.value)) {
+        final part = chunk.split(';').first.trim();
+        final eq = part.indexOf('=');
+        if (eq > 0) {
+          merged[part.substring(0, eq).trim()] = part.substring(eq + 1);
+        }
       }
     }
+
+    if (merged.isEmpty) return;
     cookieHeader = merged.entries.map((e) => '${e.key}=${e.value}').join('; ');
   }
 

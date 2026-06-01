@@ -13,6 +13,7 @@ class StitchTextField extends StatefulWidget {
     this.onSubmitted,
     this.validator,
     this.readOnly = false,
+    this.autofocus = false,
   });
 
   final TextEditingController controller;
@@ -21,6 +22,7 @@ class StitchTextField extends StatefulWidget {
   final IconData? icon;
   final bool obscureText;
   final bool readOnly;
+  final bool autofocus;
   final TextInputType? keyboardType;
   final TextInputAction? textInputAction;
   final ValueChanged<String>? onSubmitted;
@@ -45,6 +47,7 @@ class _StitchTextFieldState extends State<StitchTextField> {
       controller: widget.controller,
       obscureText: _obscure,
       readOnly: widget.readOnly,
+      autofocus: widget.autofocus,
       keyboardType: widget.keyboardType,
       textInputAction: widget.textInputAction,
       onFieldSubmitted: widget.onSubmitted,
