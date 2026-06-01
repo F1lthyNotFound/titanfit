@@ -36,16 +36,8 @@ class GymFlavorService extends ChangeNotifier {
   Future<void> init() async {
     final prefs = await SharedPreferences.getInstance();
     _onboardingComplete = prefs.getBool(_keyOnboardingDone) ?? false;
-    // Unfinished onboarding → no cold-start session, but keep cookies in prefs
-    // while logged_in flag set (same-run login/register still works after restart).
-    final prefsLoggedIn = prefs.getBool(_keyLoggedIn) ?? false;
-    if (_onboardingComplete) {
-      _loggedIn = prefsLoggedIn;
-      _cookieHeader = _loggedIn ? (prefs.getString(_keyCookies) ?? '') : '';
-    } else {
-      _loggedIn = false;
-      _cookieHeader = prefsLoggedIn ? (prefs.getString(_keyCookies) ?? '') : '';
-    }
+    _loggedIn = prefs.getBool(_keyLoggedIn) ?? false;
+    _cookieHeader = prefs.getString(_keyCookies) ?? '';
     final raw = prefs.getString(_keyFlavor);
     if (raw != null && raw.isNotEmpty) {
       try {
@@ -171,8 +163,7 @@ class GymFlavorService extends ChangeNotifier {
     notifyListeners();
   }
 
-  String get cookieHeader =>
-      _cookieHeader.isNotEmpty ? _cookieHeader : (_client?.cookieHeader ?? '');
+  String get cookieHeader => _cookieHeader;
 
   Future<void> saveCookies(String header) async {
     _cookieHeader = header;

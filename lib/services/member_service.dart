@@ -164,16 +164,10 @@ class MemberService {
     if (res['success'] == true) {
       return ProfileSaveResult(ok: true, message: message);
     }
-    if (message.toLowerCase().contains('unauthorized')) {
-      return const ProfileSaveResult(
-        ok: false,
-        message: 'Session expired — sign in again',
-        unauthorized: true,
-      );
-    }
     return ProfileSaveResult(
       ok: false,
       message: message.isNotEmpty ? message : 'Could not save — try again',
+      unauthorized: message.toLowerCase().contains('unauthorized'),
     );
   }
 

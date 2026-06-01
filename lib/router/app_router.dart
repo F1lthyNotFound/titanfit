@@ -33,6 +33,9 @@ class AppRouter {
           if (!loggedIn) return '/login';
           return onboarded ? '/home' : '/member-onboard';
         }
+        if (hasFlavor && loggedIn && !onboarded && loc == '/login') {
+          return '/member-onboard';
+        }
         if (hasFlavor && loggedIn && !onboarded && _protected(loc) && loc != '/member-onboard') {
           return '/member-onboard';
         }
