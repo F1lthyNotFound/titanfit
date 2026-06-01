@@ -165,10 +165,9 @@ class MemberService {
       return ProfileSaveResult(ok: true, message: message);
     }
     if (message.toLowerCase().contains('unauthorized')) {
-      await GymFlavorService.instance.clearAuthSession();
       return const ProfileSaveResult(
         ok: false,
-        message: 'Session expired — please sign in again',
+        message: 'Session expired — sign in again',
         unauthorized: true,
       );
     }

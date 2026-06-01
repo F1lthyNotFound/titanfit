@@ -81,7 +81,7 @@ class AuthService {
         }
         needsOnboarding = !profile.onboardingComplete;
       }
-      await GymFlavorService.instance.saveCookies(_client.cookieHeader);
+      await _applySessionFromResponse(res);
       await GymFlavorService.instance.setSession(
         loggedIn: true,
         onboardingComplete: !needsOnboarding,
@@ -89,6 +89,21 @@ class AuthService {
       return AuthResult.ok(needsOnboarding: needsOnboarding);
     }
     return AuthResult.fail((res['message'] ?? 'Request failed').toString());
+  }
+
+  /// Cookie jar on mobile often miss Set-Cookie — use session_token from JSON body.
+  Future<void> _applySessionFromResponse(Map<String, dynamic> res) async {
+    var header = _client.cookieHeader;
+    if (header.isEmpty) {
+      final tok = (res['session_token'] ?? '').toString().trim();
+      if (tok.isNotEmpty) {
+        header = 'titan_session=$tok';
+        _client.cookieHeader = header;
+      }
+    }
+    if (header.isNotEmpty) {
+      await GymFlavorService.instance.saveCookies(header);
+    }
   }
 
   Future<void> logout() async {
