@@ -1,12 +1,18 @@
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../flavor/gym_flavor_service.dart';
+import '../screens/account/id_submission_screen.dart';
 import '../screens/account/account_screen.dart';
 import '../screens/auth/forgot_password_screen.dart';
 import '../screens/auth/login_screen.dart';
 import '../screens/auth/register_screen.dart';
+import '../screens/auth/verify_email_screen.dart';
 import '../screens/history/history_screen.dart';
 import '../screens/home/home_screen.dart';
+import '../screens/bookings/bookings_screen.dart';
+import '../screens/bookings/appointment_flow_screen.dart';
+import '../screens/branch/branch_screen.dart';
 import '../screens/membership/membership_screen.dart';
 import '../screens/onboarding/flavor_bootstrap_screen.dart';
 import '../screens/onboarding/member_onboarding_screen.dart';
@@ -14,6 +20,22 @@ import '../screens/shell/main_shell.dart';
 import '../screens/wallet/wallet_screen.dart';
 
 class AppRouter {
+  static CustomTransitionPage<void> _fadeSlide(Widget child) {
+    return CustomTransitionPage<void>(
+      child: child,
+      transitionsBuilder: (context, animation, secondaryAnimation, child) {
+        final curved = CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
+        return FadeTransition(
+          opacity: curved,
+          child: SlideTransition(
+            position: Tween<Offset>(begin: const Offset(0, 0.03), end: Offset.zero).animate(curved),
+            child: child,
+          ),
+        );
+      },
+    );
+  }
+
   static GoRouter create() {
     final flavorService = GymFlavorService.instance;
 
@@ -25,15 +47,32 @@ class AppRouter {
         final hasFlavor = flavorService.hasFlavor;
         final loggedIn = flavorService.isLoggedIn;
         final onboarded = flavorService.onboardingComplete;
+        final emailVerified = flavorService.emailVerified;
+        final restricted = flavorService.clientRestricted;
 
         if (!hasFlavor && loc != '/bootstrap') {
           return '/bootstrap';
         }
         if (hasFlavor && loc == '/bootstrap') {
           if (!loggedIn) return '/login';
+          if (!emailVerified) return '/verify-email';
+          if (restricted) return '/wallet';
           return onboarded ? '/home' : '/member-onboard';
         }
-        if (hasFlavor && loggedIn && !onboarded && (loc == '/login' || loc == '/register')) {
+        if (hasFlavor && loggedIn && restricted) {
+          const allowed = {'/wallet', '/bootstrap'};
+          if (!allowed.contains(loc)) {
+            return '/wallet';
+          }
+        }
+        if (hasFlavor && loggedIn && !emailVerified && loc != '/verify-email') {
+          return '/verify-email';
+        }
+        if (hasFlavor && loggedIn && emailVerified && loc == '/verify-email') {
+          if (restricted) return '/wallet';
+          return onboarded ? '/home' : '/member-onboard';
+        }
+        if (hasFlavor && loggedIn && emailVerified && !onboarded && (loc == '/login' || loc == '/register')) {
           return '/member-onboard';
         }
         if (hasFlavor && !loggedIn && loc == '/member-onboard') {
@@ -43,9 +82,12 @@ class AppRouter {
           return '/member-onboard';
         }
         if (hasFlavor && loggedIn && onboarded && (loc == '/login' || loc == '/register' || loc == '/member-onboard')) {
-          return '/home';
+          return restricted ? '/wallet' : '/home';
         }
         if (hasFlavor && !loggedIn && _protected(loc)) {
+          return '/login';
+        }
+        if (hasFlavor && !loggedIn && loc == '/verify-email') {
           return '/login';
         }
         return null;
@@ -64,6 +106,10 @@ class AppRouter {
           builder: (_, __) => const RegisterScreen(),
         ),
         GoRoute(
+          path: '/verify-email',
+          builder: (_, __) => const VerifyEmailScreen(),
+        ),
+        GoRoute(
           path: '/forgot-password',
           builder: (_, __) => const ForgotPasswordScreen(),
         ),
@@ -73,11 +119,27 @@ class AppRouter {
         ),
         GoRoute(
           path: '/wallet',
-          builder: (_, __) => const WalletScreen(),
+          pageBuilder: (_, __) => _fadeSlide(const WalletScreen()),
         ),
         GoRoute(
           path: '/membership',
-          builder: (_, __) => const MembershipScreen(),
+          pageBuilder: (_, __) => _fadeSlide(const MembershipScreen()),
+        ),
+        GoRoute(
+          path: '/bookings',
+          pageBuilder: (_, __) => _fadeSlide(const BookingsScreen()),
+        ),
+        GoRoute(
+          path: '/appointment',
+          pageBuilder: (_, __) => _fadeSlide(const AppointmentFlowScreen()),
+        ),
+        GoRoute(
+          path: '/branch',
+          pageBuilder: (_, __) => _fadeSlide(const BranchScreen()),
+        ),
+        GoRoute(
+          path: '/id-verification',
+          pageBuilder: (_, __) => _fadeSlide(const IdSubmissionScreen()),
         ),
         StatefulShellRoute.indexedStack(
           builder: (context, state, navigationShell) {
@@ -119,6 +181,10 @@ class AppRouter {
         loc.startsWith('/history') ||
         loc.startsWith('/account') ||
         loc.startsWith('/wallet') ||
-        loc.startsWith('/membership');
+        loc.startsWith('/membership') ||
+        loc.startsWith('/bookings') ||
+        loc.startsWith('/appointment') ||
+        loc.startsWith('/branch') ||
+        loc.startsWith('/id-verification');
   }
 }

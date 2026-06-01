@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../flavor/gym_flavor_service.dart';
 import '../../services/member_service.dart';
+import '../../theme/app_theme.dart';
+import '../../widgets/fade_slide_in.dart';
 
 enum _HistoryFilter { all, checkIn, topUp, booking }
 
@@ -135,50 +137,58 @@ class _HistoryScreenState extends State<HistoryScreen> {
     );
   }
 
-  Widget _row(MemberHistoryItem item) {
+  Widget _row(MemberHistoryItem item, int index) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final amount = _amountLabel(item);
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 52,
-            height: 52,
-            decoration: BoxDecoration(
-              color: theme.colorScheme.primary.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Icon(_iconFor(item), size: 28, color: theme.colorScheme.primary),
+    return FadeSlideIn(
+      delay: Duration(milliseconds: 35 * (index % 12)),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: isDark ? TitanTheme.surfaceDark : TitanTheme.surfaceLight,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: isDark ? TitanTheme.borderDark : TitanTheme.borderLight),
           ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: 4),
-                Text(item.label, style: theme.textTheme.titleSmall),
-                const SizedBox(height: 4),
-                Text(_formatDate(item.date), style: theme.textTheme.bodyMedium),
-                if (item.status.isNotEmpty && item.status != 'completed')
-                  Padding(
-                    padding: const EdgeInsets.only(top: 4),
-                    child: Text(
-                      item.status.toUpperCase(),
-                      style: theme.textTheme.labelSmall,
-                    ),
-                  ),
-              ],
-            ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primary.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(_iconFor(item), size: 24, color: theme.colorScheme.primary),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(item.label, style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 4),
+                    Text(_formatDate(item.date), style: theme.textTheme.bodySmall),
+                    if (item.status.isNotEmpty && item.status != 'completed')
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text(
+                          item.status.toUpperCase(),
+                          style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.outline),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              if (amount.isNotEmpty)
+                Text(amount, style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
+            ],
           ),
-          if (amount.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: Text(amount, style: theme.textTheme.titleSmall),
-            ),
-        ],
+        ),
       ),
     );
   }
@@ -222,7 +232,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                         : ListView.builder(
                             physics: const AlwaysScrollableScrollPhysics(),
                             itemCount: filtered.length,
-                            itemBuilder: (_, i) => _row(filtered[i]),
+                            itemBuilder: (_, i) => _row(filtered[i], i),
                           ),
                   ),
           ),

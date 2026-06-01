@@ -49,6 +49,14 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!mounted) return;
     setState(() => _loading = false);
     if (result.ok) {
+      if (result.needsEmailVerification) {
+        context.go('/verify-email');
+        return;
+      }
+      if (result.walletRefundOnly) {
+        context.go('/wallet');
+        return;
+      }
       context.go(result.needsOnboarding ? '/member-onboard' : '/home');
       return;
     }

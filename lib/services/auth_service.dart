@@ -74,6 +74,7 @@ class AuthService {
     if (res['success'] == true) {
       final data = res['data'];
       var needsOnboarding = defaultNeedsOnboarding;
+      var emailVerified = res['needs_email_verification'] != true;
       if (data is Map<String, dynamic>) {
         final profile = MemberProfile.fromJson(data);
         final gymId = (data['gym_id'] as num?)?.toInt();
@@ -81,13 +82,24 @@ class AuthService {
           return AuthResult.fail('Wrong username or password');
         }
         needsOnboarding = !profile.onboardingComplete;
+        emailVerified = profile.emailVerified;
+        await GymFlavorService.instance.setClientRestricted(profile.isWalletRefundOnly);
+      }
+      if (res['needs_email_verification'] == true) {
+        emailVerified = false;
       }
       await _applySessionFromResponse(res);
       await GymFlavorService.instance.setSession(
         loggedIn: true,
-        onboardingComplete: !needsOnboarding,
+        onboardingComplete: emailVerified ? !needsOnboarding : false,
+        emailVerified: emailVerified,
       );
-      return AuthResult.ok(needsOnboarding: needsOnboarding);
+      final restricted = GymFlavorService.instance.clientRestricted;
+      return AuthResult.ok(
+        needsOnboarding: needsOnboarding,
+        needsEmailVerification: !emailVerified,
+        walletRefundOnly: restricted,
+      );
     }
     return AuthResult.fail((res['message'] ?? 'Request failed').toString());
   }
@@ -109,7 +121,7 @@ class AuthService {
     try {
       await _client.postForm('/api/controllers/logout.php', {});
     } catch (_) {}
-    await GymFlavorService.instance.clearSession();
+    await GymFlavorService.instance.clearAuthSession();
   }
 }
 
@@ -118,10 +130,21 @@ class AuthResult {
     required this.ok,
     this.message,
     this.needsOnboarding = false,
+    this.needsEmailVerification = false,
+    this.walletRefundOnly = false,
   });
 
-  factory AuthResult.ok({bool needsOnboarding = false}) =>
-      AuthResult._(ok: true, needsOnboarding: needsOnboarding);
+  factory AuthResult.ok({
+    bool needsOnboarding = false,
+    bool needsEmailVerification = false,
+    bool walletRefundOnly = false,
+  }) =>
+      AuthResult._(
+        ok: true,
+        needsOnboarding: needsOnboarding,
+        needsEmailVerification: needsEmailVerification,
+        walletRefundOnly: walletRefundOnly,
+      );
 
   factory AuthResult.fail(String message) =>
       AuthResult._(ok: false, message: message);
@@ -129,4 +152,6 @@ class AuthResult {
   final bool ok;
   final String? message;
   final bool needsOnboarding;
+  final bool needsEmailVerification;
+  final bool walletRefundOnly;
 }

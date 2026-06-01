@@ -1,17 +1,19 @@
-import 'dart:typed_data';
-
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../config/api_config.dart';
+import '../../flavor/gym_flavor.dart';
 import '../../flavor/gym_flavor_service.dart';
 import '../../services/auth_service.dart';
 import '../../services/member_service.dart';
+import '../../theme/accessibility_service.dart';
+import '../../theme/app_theme.dart';
+import '../../theme/theme_service.dart';
 import '../../widgets/glass_panel.dart';
-import '../../widgets/pill_button.dart';
 import '../../widgets/gym_logo.dart';
+import '../../widgets/social_links_editor.dart';
 import '../../widgets/stitch_text_field.dart';
 
 class AccountScreen extends StatefulWidget {
@@ -27,22 +29,12 @@ class _AccountScreenState extends State<AccountScreen> {
   bool _editing = false;
   bool _saving = false;
   String? _error;
-  String? _idType;
-  Uint8List? _idPreview;
 
+  final _socialEditorKey = GlobalKey<SocialLinksEditorState>();
   final _firstCtrl = TextEditingController();
   final _lastCtrl = TextEditingController();
   final _phoneCtrl = TextEditingController();
   final _genderCtrl = TextEditingController();
-  final _instagramCtrl = TextEditingController();
-  final _facebookCtrl = TextEditingController();
-
-  static const _idTypes = [
-    'Government ID',
-    'Student ID',
-    'Senior / PWD ID',
-    'Company ID',
-  ];
 
   @override
   void initState() {
@@ -56,8 +48,6 @@ class _AccountScreenState extends State<AccountScreen> {
     _lastCtrl.dispose();
     _phoneCtrl.dispose();
     _genderCtrl.dispose();
-    _instagramCtrl.dispose();
-    _facebookCtrl.dispose();
     super.dispose();
   }
 
@@ -79,8 +69,16 @@ class _AccountScreenState extends State<AccountScreen> {
     _lastCtrl.text = profile.lastName;
     _phoneCtrl.text = profile.phone;
     _genderCtrl.text = profile.gender;
-    _instagramCtrl.text = profile.socialInstagram;
-    _facebookCtrl.text = profile.socialFacebook;
+  }
+
+  Map<String, String> get _displaySocialLinks {
+    final p = _profile;
+    if (p == null) return {};
+    if (p.socialLinks.isNotEmpty) return p.socialLinks;
+    final links = <String, String>{};
+    if (p.socialInstagram.isNotEmpty) links['instagram'] = p.socialInstagram;
+    if (p.socialFacebook.isNotEmpty) links['facebook'] = p.socialFacebook;
+    return links;
   }
 
   String? get _avatarUrl {
@@ -106,6 +104,11 @@ class _AccountScreenState extends State<AccountScreen> {
   Future<void> _save({List<int>? avatarBytes}) async {
     final flavor = GymFlavorService.instance.flavor;
     if (flavor == null) return;
+    final socialLinks = _socialEditorKey.currentState?.collectLinks() ?? _displaySocialLinks;
+    if (socialLinks.length > 5) {
+      setState(() => _error = 'Maximum 5 social links');
+      return;
+    }
     setState(() {
       _saving = true;
       _error = null;
@@ -115,8 +118,7 @@ class _AccountScreenState extends State<AccountScreen> {
       lastName: _lastCtrl.text.trim(),
       phone: _phoneCtrl.text.trim(),
       gender: _genderCtrl.text.trim(),
-      socialInstagram: _instagramCtrl.text.trim(),
-      socialFacebook: _facebookCtrl.text.trim(),
+      socialLinks: socialLinks,
       avatarBytes: avatarBytes,
     );
     if (!mounted) return;
@@ -127,18 +129,6 @@ class _AccountScreenState extends State<AccountScreen> {
     } else {
       setState(() => _error = result.message.isNotEmpty ? result.message : 'Could not save profile');
     }
-  }
-
-  Future<void> _pickIdPhoto() async {
-    final picker = ImagePicker();
-    final file = await picker.pickImage(source: ImageSource.camera, maxWidth: 1600);
-    if (file == null) return;
-    final bytes = await file.readAsBytes();
-    if (!mounted) return;
-    setState(() => _idPreview = bytes);
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('ID photo captured — submission coming soon')),
-    );
   }
 
   Future<void> _logout(BuildContext context) async {
@@ -152,12 +142,23 @@ class _AccountScreenState extends State<AccountScreen> {
   @override
   Widget build(BuildContext context) {
     final flavor = GymFlavorService.instance.flavor!;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
+    return ListenableBuilder(
+      listenable: Listenable.merge([
+        ThemeService.instance,
+        AccessibilityService.instance,
+      ]),
+      builder: (context, _) => _buildBody(context, flavor, isDark),
+    );
+  }
+
+  Widget _buildBody(BuildContext context, GymFlavor flavor, bool isDark) {
     return Scaffold(
-      backgroundColor: const Color(0xFF000000),
+      backgroundColor: isDark ? TitanTheme.canvasDark : TitanTheme.canvasLight,
       appBar: AppBar(
         title: const Text('Account'),
-        backgroundColor: const Color(0xFF000000),
+        backgroundColor: isDark ? TitanTheme.canvasDark : TitanTheme.canvasLight,
         actions: [
           if (!_loading)
             TextButton(
@@ -270,18 +271,6 @@ class _AccountScreenState extends State<AccountScreen> {
                           label: 'Gender',
                           icon: Icons.wc_outlined,
                         ),
-                        const SizedBox(height: 12),
-                        StitchTextField(
-                          controller: _instagramCtrl,
-                          label: 'Instagram',
-                          icon: Icons.alternate_email,
-                        ),
-                        const SizedBox(height: 12),
-                        StitchTextField(
-                          controller: _facebookCtrl,
-                          label: 'Facebook',
-                          icon: Icons.facebook_outlined,
-                        ),
                         if (_profile?.email.isNotEmpty == true) ...[
                           const SizedBox(height: 12),
                           Text(
@@ -299,12 +288,108 @@ class _AccountScreenState extends State<AccountScreen> {
                           _InfoRow(label: 'Phone', value: _profile!.phone),
                         if (_profile?.gender.isNotEmpty == true)
                           _InfoRow(label: 'Gender', value: _profile!.gender),
-                        if (_profile?.socialInstagram.isNotEmpty == true)
-                          _InfoRow(label: 'Instagram', value: _profile!.socialInstagram),
-                        if (_profile?.socialFacebook.isNotEmpty == true)
-                          _InfoRow(label: 'Facebook', value: _profile!.socialFacebook),
                       ],
                     ),
+            ),
+            const SizedBox(height: 16),
+            GlassPanel(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    children: [
+                      Text('SOCIALS', style: Theme.of(context).textTheme.labelSmall),
+                      const Spacer(),
+                      Text(
+                        'Max 5',
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                              color: Theme.of(context).colorScheme.outline,
+                            ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  SocialLinksEditor(
+                    key: _socialEditorKey,
+                    links: _displaySocialLinks,
+                    editing: _editing,
+                    maxLinks: 5,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            GlassPanel(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text('APPEARANCE', style: Theme.of(context).textTheme.labelSmall),
+                  const SizedBox(height: 8),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('Dark mode'),
+                    subtitle: const Text('Switch between light and dark theme'),
+                    value: ThemeService.instance.isDark,
+                    onChanged: (on) => ThemeService.instance.setMode(
+                      on ? ThemeMode.dark : ThemeMode.light,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            GlassPanel(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text('ACCESSIBILITY', style: Theme.of(context).textTheme.labelSmall),
+                  const SizedBox(height: 8),
+                  Text('Text size', style: Theme.of(context).textTheme.bodyMedium),
+                  const SizedBox(height: 8),
+                  SegmentedButton<double>(
+                    segments: const [
+                      ButtonSegment(value: 1.0, label: Text('Default')),
+                      ButtonSegment(value: 1.12, label: Text('Large')),
+                      ButtonSegment(value: 1.24, label: Text('XL')),
+                    ],
+                    selected: {AccessibilityService.instance.textScale},
+                    onSelectionChanged: (values) {
+                      AccessibilityService.instance.setTextScale(values.first);
+                    },
+                  ),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('Bold text'),
+                    value: AccessibilityService.instance.boldText,
+                    onChanged: AccessibilityService.instance.setBoldText,
+                  ),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('Reduce motion'),
+                    value: AccessibilityService.instance.reduceMotion,
+                    onChanged: AccessibilityService.instance.setReduceMotion,
+                  ),
+                  const SizedBox(height: 4),
+                  Text('Color vision', style: Theme.of(context).textTheme.bodyMedium),
+                  const SizedBox(height: 8),
+                  DropdownButtonFormField<ColorBlindMode>(
+                    key: ValueKey(AccessibilityService.instance.colorBlindMode),
+                    initialValue: AccessibilityService.instance.colorBlindMode,
+                    decoration: const InputDecoration(border: OutlineInputBorder()),
+                    items: const [
+                      DropdownMenuItem(value: ColorBlindMode.off, child: Text('Off')),
+                      DropdownMenuItem(value: ColorBlindMode.protanopia, child: Text('Protanopia')),
+                      DropdownMenuItem(value: ColorBlindMode.deuteranopia, child: Text('Deuteranopia')),
+                      DropdownMenuItem(value: ColorBlindMode.tritanopia, child: Text('Tritanopia')),
+                    ],
+                    onChanged: (mode) {
+                      if (mode != null) {
+                        AccessibilityService.instance.setColorBlindMode(mode);
+                      }
+                    },
+                  ),
+                ],
+              ),
             ),
             const SizedBox(height: 16),
             GlassPanel(
@@ -326,37 +411,13 @@ class _AccountScreenState extends State<AccountScreen> {
             ),
             const SizedBox(height: 16),
             GlassPanel(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text('ID VERIFICATION', style: Theme.of(context).textTheme.labelSmall),
-                  const SizedBox(height: 12),
-                  DropdownButtonFormField<String>(
-                    initialValue: _idType,
-                    decoration: const InputDecoration(labelText: 'ID type'),
-                    items: _idTypes
-                        .map((t) => DropdownMenuItem(value: t, child: Text(t)))
-                        .toList(),
-                    onChanged: (v) => setState(() => _idType = v),
-                  ),
-                  const SizedBox(height: 12),
-                  if (_idPreview != null)
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: Image.memory(_idPreview!, height: 120, fit: BoxFit.cover),
-                    ),
-                  const SizedBox(height: 12),
-                  PillButton(
-                    label: 'Take ID photo',
-                    icon: Icons.add_a_photo_outlined,
-                    onPressed: _idType == null ? null : _pickIdPhoto,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Upload UI only — staff approval flow coming soon.',
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
-                ],
+              child: ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.badge_outlined),
+                title: const Text('ID verification'),
+                subtitle: const Text('Submit IDs and view approved badges'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => context.push('/id-verification'),
               ),
             ),
             const SizedBox(height: 16),

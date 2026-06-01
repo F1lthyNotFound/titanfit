@@ -188,6 +188,18 @@ class ApiClient {
     String fileField = 'avatar',
     String fileName = 'avatar.jpg',
   }) async {
+    final fileList = files?.entries
+            .map((e) => (field: e.key, bytes: e.value, filename: fileName))
+            .toList() ??
+        [];
+    return postMultipartFiles(path, fields, files: fileList);
+  }
+
+  Future<Map<String, dynamic>> postMultipartFiles(
+    String path,
+    Map<String, String> fields, {
+    List<({String field, List<int> bytes, String filename})> files = const [],
+  }) async {
     Future<http.Response> send(Uri uri) async {
       final req = http.MultipartRequest('POST', uri);
       req.headers['Accept'] = 'application/json';
@@ -195,15 +207,13 @@ class ApiClient {
         req.headers['Cookie'] = cookieHeader;
       }
       req.fields.addAll(fields);
-      if (files != null) {
-        for (final e in files.entries) {
-          req.files.add(http.MultipartFile.fromBytes(
-            e.key,
-            e.value,
-            filename: fileName,
-            contentType: MediaType('image', 'jpeg'),
-          ));
-        }
+      for (final file in files) {
+        req.files.add(http.MultipartFile.fromBytes(
+          file.field,
+          file.bytes,
+          filename: file.filename,
+          contentType: MediaType('image', 'jpeg'),
+        ));
       }
       final streamed = await req.send();
       return http.Response.fromStream(streamed);

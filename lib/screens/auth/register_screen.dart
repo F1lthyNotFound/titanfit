@@ -61,7 +61,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (!mounted) return;
     setState(() => _loading = false);
     if (result.ok) {
-      context.go('/member-onboard');
+      if (result.needsEmailVerification) {
+        context.go('/verify-email');
+        return;
+      }
+      context.go(result.needsOnboarding ? '/member-onboard' : '/home');
       return;
     }
     setState(() => _error = result.message);

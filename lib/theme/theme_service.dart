@@ -23,13 +23,17 @@ class ThemeService extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> toggle() async {
-    _mode = _mode == ThemeMode.dark ? ThemeMode.light : ThemeMode.dark;
+  Future<void> setMode(ThemeMode mode) async {
+    _mode = mode;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(
       _keyThemeMode,
       _mode == ThemeMode.light ? 'light' : 'dark',
     );
     notifyListeners();
+  }
+
+  Future<void> toggle() async {
+    await setMode(_mode == ThemeMode.dark ? ThemeMode.light : ThemeMode.dark);
   }
 }
